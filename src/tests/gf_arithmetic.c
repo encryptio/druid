@@ -70,9 +70,10 @@ void test_division_inverse() {
         )
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     srandom(time(NULL));
-    test_initialize();
+    test_initialize(argc, argv);
+    gf_initialize();
 
     test_add_commutes();
     test_add_associates();
