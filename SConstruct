@@ -1,5 +1,5 @@
 import os
-env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc')
+env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc -g')
 
 def runTest(env,target,source):
     import subprocess
