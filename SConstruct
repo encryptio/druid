@@ -7,6 +7,10 @@ def runTest(env,target,source):
     if not subprocess.call(app):
         open(str(target[0]),'w').write("PASSED\n")
 
+env.Command( 'obj', [], Mkdir( '$TARGET' ) )
+env.Command( 'prog', [], Mkdir( '$TARGET' ) )
+env.Command( 'prog/tests', [], Mkdir( '$TARGET' ) )
+
 # object code
 
 env.Object( 'obj/galois_field.o', 'src/galois_field.c' )
