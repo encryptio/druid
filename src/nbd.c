@@ -35,7 +35,6 @@ struct nbd_server * nbd_create(uint16_t port, struct remapper *rm) {
 static bool nbd_sendall(int s, uint8_t *msg, int len) {
     while ( len > 0 ) {
         int ret = send(s, msg, len, 0);
-        printf("send(%d, %p, %d) -> %d\n", s, msg, len, ret);
 
         if ( ret <= 0 )
             return false; // closed or error
@@ -50,12 +49,9 @@ static bool nbd_sendall(int s, uint8_t *msg, int len) {
 static bool nbd_recvall(int s, uint8_t *msg, int len) {
     while ( len > 0 ) {
         int ret = recv(s, msg, len, 0);
-        printf("recv(%d, %p, %d) -> %d\n", s, msg, len, ret);
 
-        if ( ret <= 0 ) {
-            printf("recv returned %d, strerror = %s\n", ret, strerror(errno));
+        if ( ret <= 0 )
             return false; // closed or error
-        }
 
         len -= ret;
         msg += ret;
@@ -71,8 +67,6 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
     
     uint8_t buffer[8];
 
-    printf("init packet\n");
-
     pack_be64(rm_size(nbd->rm), buffer);
     if ( !nbd_sendall(s, buffer, 8) ) return;
 
@@ -81,13 +75,10 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
 
     uint8_t handle[8];
     while ( true ) {
-        printf("waiting for next request\n");
         if ( !nbd_recvall(s, buffer, 8) ) return;
-        printf("verifying request\n");
         if ( memcmp(buffer, (void*) NBD_REQUEST_MAGIC, 4) != 0 ) return;
 
         uint32_t cmd = unpack_be32(buffer+4);
-        printf("  cmd = %d\n", cmd);
 
         if ( cmd == NBD_CMD_DISC )
             return;
@@ -99,8 +90,6 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
 
         if ( !nbd_recvall(s, buffer, 4) ) return;
         uint32_t len = unpack_be32(buffer);
-
-        printf("  from = %d, len = %d\n", (int)from, len);
 
         if ( len > 128*1024 ) return;
 
@@ -133,7 +122,7 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
                 break;
 
             default:
-                printf("PROTOCOL ERROR: unknown command %u\n", cmd);
+                fprintf(stderr, "PROTOCOL ERROR: unknown command %u\n", cmd);
                 return;
         }
     }
@@ -175,7 +164,6 @@ void nbd_listenloop(struct nbd_server *nbd) {
     int clientfd;
     while ( (clientfd = accept(servfd, (struct sockaddr *restrict) &their_addr, &their_addr_len)) >= 0 ) {
         nbd_handle_client_socket(nbd, clientfd);
-        printf("closing client\n");
         close(clientfd);
         their_addr_len = sizeof(struct sockaddr_storage);
     }
