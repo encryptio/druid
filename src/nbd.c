@@ -100,9 +100,9 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
         if ( !nbd_recvall(s, buffer, 4) ) return;
         uint32_t len = unpack_be32(buffer);
 
-        if ( len > 128*1024 ) return;
-
         printf("  from = %d, len = %d\n", (int)from, len);
+
+        if ( len > 128*1024 ) return;
 
         bool res;
         switch ( cmd ) {
@@ -133,6 +133,7 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
                 break;
 
             default:
+                printf("PROTOCOL ERROR: unknown command %u\n", cmd);
                 return;
         }
     }
