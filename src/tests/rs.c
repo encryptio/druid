@@ -15,15 +15,15 @@ void rs_apply_reversal(rs_matrix *mat, uint8_t *in, uint8_t *out);
 void rs_test_run(int n, int m) {
     rs_matrix *mat = rs_create(n,m);
 
-    uint8_t *data = calloc(n+m, 1);
+    uint8_t *data = calloc(1, n+m);
     for (int i = 0; i < n; i++)
         data[i] = random();
 
     uint8_t *cs = data+n;
-    uint8_t *exists = calloc(n+m, 1);
+    uint8_t *exists = calloc(1, n+m+1);
 
-    uint8_t *stuff = calloc(n, 1);
-    uint8_t *newstuff = calloc(n, 1);
+    uint8_t *stuff = calloc(1, n);
+    uint8_t *newstuff = calloc(1, n);
 
     rs_apply_checksum(mat, data, cs);
 
