@@ -1,5 +1,5 @@
 import os
-env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc -g')
+env = Environment(CCFLAGS = '-O0 -Wall -std=c99 -Isrc -g')
 
 def runTest(env,target,source):
     import subprocess
@@ -15,12 +15,17 @@ env.Command( 'prog/tests', [], Mkdir( '$TARGET' ) )
 
 env.Object( 'obj/galois_field.o', 'src/galois_field.c' )
 env.Object( 'obj/reed_solomon.o', 'src/reed_solomon.c' )
+env.Object( 'obj/main.o', 'src/main.c' )
+env.Object( 'obj/remapper.o', 'src/remapper.c' )
+env.Object( 'obj/nbd.o', 'src/nbd.c' )
 
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
 env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 
 # final programs
+
+env.Program( 'prog/druid', ['obj/main.o', 'obj/remapper.o', 'obj/nbd.o'] )
 
 # tests
 
