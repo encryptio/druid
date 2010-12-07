@@ -79,7 +79,7 @@ bool rm_write(struct remapper *rm, uint64_t offset, uint32_t size, void *buf) {
             // write stretches over the first partial block
             if ( !rm->block_map[block_idx] )
                 if ( (rm->block_map[block_idx] = malloc(rm->block_size)) == NULL )
-                    err(1, "Couldn't allocate space for block %d", block_idx);
+                    err(1, "Couldn't allocate space for block %llu", block_idx);
             memcpy(rm->block_map[block_idx] + our_offset, buf, our_write);
 
             size -= our_write;
@@ -91,7 +91,7 @@ bool rm_write(struct remapper *rm, uint64_t offset, uint32_t size, void *buf) {
             // write is entirely enclosed inside this block
             if ( !rm->block_map[block_idx] )
                 if ( (rm->block_map[block_idx] = malloc(rm->block_size)) == NULL )
-                    err(1, "Couldn't allocate space for block %d", block_idx);
+                    err(1, "Couldn't allocate space for block %llu", block_idx);
             memcpy(rm->block_map[block_idx] + our_offset, buf, size);
 
             return true;
@@ -104,7 +104,7 @@ bool rm_write(struct remapper *rm, uint64_t offset, uint32_t size, void *buf) {
     while ( size > rm->block_size ) {
         if ( !rm->block_map[block_idx] )
             if ( (rm->block_map[block_idx] = malloc(rm->block_size)) == NULL )
-                err(1, "Couldn't allocate space for block %d", block_idx);
+                err(1, "Couldn't allocate space for block %llu", block_idx);
         memcpy(rm->block_map[block_idx], buf, rm->block_size);
 
         size -= rm->block_size;
@@ -116,7 +116,7 @@ bool rm_write(struct remapper *rm, uint64_t offset, uint32_t size, void *buf) {
     if ( size ) {
         if ( !rm->block_map[block_idx] )
             if ( (rm->block_map[block_idx] = malloc(rm->block_size)) == NULL )
-                err(1, "Couldn't allocate space for block %d", block_idx);
+                err(1, "Couldn't allocate space for block %llu", block_idx);
         memcpy(rm->block_map[block_idx], buf, size);
     }
 
