@@ -62,17 +62,13 @@ static bool nbd_recvall(int s, uint8_t *msg, int len) {
 
 static uint8_t databuffer[128*1024];
 static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
-    if ( !nbd_sendall(s, (uint8_t*) NBD_PASSWD,    8) ) return;
-    if ( !nbd_sendall(s, (uint8_t*) NBD_INITMAGIC, 8) ) return;
+    memcpy(databuffer, NBD_PASSWD, 8);
+    memcpy(databuffer+8, NBD_INITMAGIC, 8);
+    pack_be64(rm_size(nbd->rm), databuffer+16);
+    memset(databuffer+24, 0, 128);
+    if ( !nbd_sendall(s, databuffer, 24+128) ) return;
     
     uint8_t buffer[8];
-
-    pack_be64(rm_size(nbd->rm), buffer);
-    if ( !nbd_sendall(s, buffer, 8) ) return;
-
-    memset(databuffer, 0, 128);
-    if ( !nbd_sendall(s, databuffer, 128) ) return;
-
     uint8_t handle[8];
     while ( true ) {
         if ( !nbd_recvall(s, buffer, 8) ) return;
