@@ -45,6 +45,18 @@ it is expected that the initial implementation will require the
     ordering header < partition table < jump table < data, even
     though this is not required by the on-disk format.
 
+the jump table marks locations in multiples of the block size from
+    the start of the device.
+
+the blowfish encryption is slightly modified:
+    the input password is first hashed through sha-512, then that is
+    used as the input to the blowfish key schedule.
+
+    for encryption/decryption, the plaintext is xored with the byte
+    offset of the section to be encrypted wrt the start of the
+    partition (to avoid pattern leaks) and also the first half of the
+    uuid (to avoid cross-partition matching).
+
 header:
     magic number "REMAPPER"
     block size in bytes (be32)
@@ -57,10 +69,13 @@ partition information:
     number of partitions (be32)
     for each partition:
         name (be16 length prefixed string, no nulls)
-        partition flags (be16 length prefixed string, [a-z: ]+)
+        flags (be32)
+            bit 0: encrypted, modified blowfish as above
+            all other bits reserved, should be 0
         length in bytes (must be a multiple of the block size) (be64)
         created timestamp (be64 from epoch)
         modified timestamp (be64 from epoch)
+        uuid (128 bits)
         number of block extents (be16)
         for each block extent:
             start block (be64)
@@ -182,6 +197,7 @@ slice info table:
         maximum UBE count (be32)
         flags (be32)
             bit 0: slice failed
+            all other bits reserved, should be 0
 
 slice:
     64KiB space reserved for crcs of the data slightly less is used.
