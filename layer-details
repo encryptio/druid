@@ -1,3 +1,5 @@
+-- OVERVIEW --
+
 filesystem (ext4, hfs+, ntfs, etc)
     implemented by the kernel at hand
 
@@ -18,7 +20,7 @@ distributor
 
     handles disk failures (total and byte-wise)
 
-    try: map lazily, in large (>=256MiB) chunks
+    try: map lazily, in large (>=64MiB) chunks
     try: keep mapping data on all disks
     try: allow parameterization of the RS codes to be independent of
          the disks by allocating horizontal arrays of RS-joined chunks
@@ -33,4 +35,158 @@ distributor
           about flushing.
     want: automatic rebalancing.
     want: background hash verification to actively remove bad bits
+
+
+-- REMAPPER DATA STRUCTURES --
+
+block size must be at least 4KiB
+all notable structures are aligned to the block size
+it is expected that the initial implementation will require the
+    ordering header < partition table < jump table < data, even
+    though this is not required by the on-disk format.
+
+header:
+    magic number "REMAPPER"
+    block size in bytes (be32)
+    number of blocks (be64)
+    block offset of partition information (be64) (typically 1)
+    block offset of jump table (be64)
+
+partition information:
+    magic number "PARTTBLS"
+    number of partitions (be32)
+    for each partition:
+        name (be16 length prefixed string, no nulls)
+        partition flags (be16 length prefixed string, [a-z: ]+)
+        length in bytes (must be a multiple of the block size) (be64)
+        created timestamp (be64 from epoch)
+        modified timestamp (be64 from epoch)
+        number of block extents (be16)
+        for each block extent:
+            start block (be64)
+            end block (inclusive) (be64)
+            length in blocks (be64)
+
+jump table:
+    magic number "JUMPTBLS"
+    for each block in the remapped world:
+        block location in mapper blocks (be64, 0 if unmapped)
+
+-- DISTRIBUTOR DATA STRUCTURES --
+
+"file" without qualification refers to a single backing representing
+    the space to be used by a single disk. it may be a file on an
+    existing filesystem, for the purposes of using the free space
+    on that drive, or it may be a raw block device.
+
+"chunk" refers to a contiguous area of the virtual device. they may
+    vary in size depending on the geometry of the redundancy.
+
+"slice" refers to a contiguous area of a file, representing a part
+    of a chunk. precisely 64MiB at all times, although some of this
+    space is used for the checksums.
+
+"set" refers to a group of files that, when used together in a
+    distributor, allow access to a one-ended store.
+
+there are four copies of the header; all are supposed to be identical,
+    but during updates of the header, they may not be. in this case,
+    the valid copy with the largest rewrite index is used as the
+    drive's header, and the other copies are replaced on startup.
+
+the "mapped index" defines the ordering in the upper layer of the data
+    stored here. mapped index 0 is first. all mapped indicies to the
+    maximum mapped index in the header defines how many there are.
+    note that without further information (in the slice info table),
+    it is impossible to tell the size of the one-sided store.
+
+similar with the slice info table.
+
+the four headers are at byte offsets 0, 128KiB, 256KiB, and 384KiB.
+the slice info tables are at offsets 512KiB and 64MiB+256KiB.
+the first slice is located at offset 128MiB.
+    from then on, the slices are located at offsets 64MiB from 128MiB.
+
+the "maximum size" in the header is verified against the device size
+    if the given target is a device, and is used as a hard limit if
+    the given target is a file.
+
+redundancy method constants:
+    0 -> plain mirror (a la raid 1)
+        requires minwidth = 1
+    1 -> last is xor of the previous (a la raid 5)
+        requires minwidth = width - 1
+    2 -> rs in GF(2^8)
+        requires width < 255.
+    all other values reserved.
+
+it can be easily calculated that the maximum number of slices handled
+    by a file can be at most 1856852, thus, the maximum space handled
+    by a single file is approximately 113 tb.
+
+failure management:
+    under partial failures of the header:
+        the crc remains incorrect, the other header locations are
+        used, until there are no working ones, at which point the
+        entire drive is considered failed.
+
+    under partial failures of the slice info tables:
+        the other slice info table is used until there are no working
+        ones, at which point the entire drive is considered failed.
+
+    under failure of a single block of data:
+        it is reconstructed (if possible) from the other locations,
+        the UBE count is incremented for the file and for the slice,
+        then the data is rewritten to disk and verified. if it fails
+        a second time, the entire slice containing the block is
+        considered failed.
+
+    if at any point the UBE count for the file exceeds its maximum,
+        the file is considered entirely failed.
+
+    if at any point the UBE count for a slice exceeds its maximum,
+        the slice is considered failed.
+
+header:
+    magic number "DISTRIB0"
+    crc checksum of the rest of the header (be32)
+    rewrite index (be32)
+    maximum mapped index (be64)
+    total UBE count (be32)
+    maximum UBE count (be32)
+    failed slices (be32)
+    maximum failed slices (be32)
+    uuid for this set (128 bits)
+    preferred chunk width (be32)
+    preferred chunk width minimum (be32)
+    this set's human name (be16 length prefixed string, no nulls)
+    this file's last location (be16 length prefixed string, no nulls)
+    number of files in set (be32)
+    for each file:
+        the file's last known location (be16 length prefixed string,
+            no nulls)
+
+slice info table:
+    magic number "SLICENFO"
+    crc checksum of the rest of the slice info table (be32)
+    rewrite index (be32)
+    maximum size in slices (be64)
+    slices used (be64)
+    for each slice:
+        mapped index (be64)
+        chunk width total (be32)
+        chunk width minimum for proper retrieval (be32)
+        this slice's index in the chunk (be32)
+        redundancy method (be32)
+        UBE count (be32)
+        maximum UBE count (be32)
+        flags (be32)
+            bit 0: slice failed
+
+slice:
+    64KiB space reserved for crcs of the data slightly less is used.
+        offset 0: crc of data 64KiB -> +4KiB
+        offset 4: crc of data 68KiB -> +4KiB
+        ...
+    arbitrary data for 64MiB-64KiB
 
