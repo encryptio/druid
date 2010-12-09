@@ -34,14 +34,14 @@ bool rm_read(struct remapper *rm, uint32_t partition, uint64_t offset, uint32_t 
 
     int extent_idx = 0;
 
+    if ( (offset + size + rm->block_size - 1)/rm->block_size > rm->partition_info[partition].size / rm->block_size ) {
+        fprintf(stderr, "[remapper] DANGER: read failed because it was out of the partition's size\n");
+        return false;
+    }
+
     // block_idx is the offset into the current extent
 
     while ( size > 0 ) {
-        if ( block_idx > rm->partition_info[partition].size / rm->block_size ) {
-            fprintf(stderr, "[remapper] DANGER: read failed because it was out of the partition's size\n");
-            return false;
-        }
-
         while ( block_idx >= rm->partition_info[partition].extents[extent_idx].length ) {
             block_idx -= rm->partition_info[partition].extents[extent_idx].length;
             extent_idx++;
@@ -119,14 +119,14 @@ bool rm_write(struct remapper *rm, uint32_t partition, uint64_t offset, uint32_t
 
     int extent_idx = 0;
 
+    if ( (offset + size + rm->block_size - 1)/rm->block_size > rm->partition_info[partition].size / rm->block_size ) {
+        fprintf(stderr, "[remapper] DANGER: write failed because it was out of the partition's size\n");
+        return false;
+    }
+
     // block_idx is the offset into the current extent
 
     while ( size > 0 ) {
-        if ( block_idx > rm->partition_info[partition].size / rm->block_size ) {
-            fprintf(stderr, "[remapper] DANGER: write failed because it was out of the partition's size\n");
-            return false;
-        }
-
         while ( block_idx >= rm->partition_info[partition].extents[extent_idx].length ) {
             block_idx -= rm->partition_info[partition].extents[extent_idx].length;
             extent_idx++;
