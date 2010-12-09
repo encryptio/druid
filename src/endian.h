@@ -14,9 +14,14 @@ static inline void pack_be64(uint64_t from, uint8_t *to) {
     to[0] = from & 0xFF;
 }
 
-static inline void pack_be32(uint64_t from, uint8_t *to) {
+static inline void pack_be32(uint32_t from, uint8_t *to) {
     to[3] = from & 0xFF; from >>= 8;
     to[2] = from & 0xFF; from >>= 8;
+    to[1] = from & 0xFF; from >>= 8;
+    to[0] = from & 0xFF;
+}
+
+static inline void pack_be16(uint16_t from, uint8_t *to) {
     to[1] = from & 0xFF; from >>= 8;
     to[0] = from & 0xFF;
 }
@@ -37,6 +42,11 @@ static inline uint32_t unpack_be32(uint8_t *from) {
             + ((uint32_t) from[2] << 8)
             + ((uint32_t) from[1] << 16)
             + ((uint32_t) from[0] << 24);
+}
+
+static inline uint16_t unpack_be16(uint8_t *from) {
+    return     (uint32_t) from[1]
+            + ((uint32_t) from[0] << 8);
 }
 
 #endif
