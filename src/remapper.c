@@ -179,12 +179,14 @@ uint64_t rm_size(struct remapper *rm, uint32_t partition) {
 bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_count) {
     uint8_t buffer[128];
 
+    uint64_t block_table_end = ((block_size*2 + 8*(1+block_count)) + block_size - 1) / block_size;
+
     memcpy(buffer, "REMAPPER", 8);
     pack_be32(block_size, buffer+8); // block size
     pack_be64(block_count, buffer+12); // block count
     pack_be64(1, buffer+20); // partition information location
     pack_be64(2, buffer+28); // jump table location
-    pack_be64(3, buffer+36); // next free block index
+    pack_be64(block_table_end, buffer+36); // next free block index
 
     if ( !dis_write(dis, 0, 44, buffer) )
         return false;
