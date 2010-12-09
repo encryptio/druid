@@ -12,15 +12,12 @@ enum fio_type {
 };
 
 struct fioh {
+    char *target;
     enum fio_type type;
+    uint64_t size;
     union {
-        struct {
-            uint64_t size;
-            uint8_t *data;
-        } mem;
-        struct {
-            int fh;
-        } file;
+        uint8_t *mem; // data
+        int file; // file descriptor
         struct {
         } bd;
         struct {

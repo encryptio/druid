@@ -1,5 +1,5 @@
 import os
-env = Environment(CCFLAGS = '-O0 -Wall -std=c99 -Isrc -g -D_BSD_SOURCE -D_POSIX_SOURCE')
+env = Environment(CCFLAGS = '-O0 -Wall -std=c99 -Isrc -g -D_BSD_SOURCE -D_POSIX_SOURCE -D_FILE_OFFSET_BITS=64')
 
 def runTest(env,target,source):
     import subprocess
