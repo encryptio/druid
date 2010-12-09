@@ -179,7 +179,7 @@ uint64_t rm_size(struct remapper *rm, uint32_t partition) {
 bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_count) {
     uint8_t buffer[128];
 
-    fprintf(stderr, "[remapper] creating new remapper set, block size %d, with %d blocks in the initial partition\n", block_size, block_count);
+    fprintf(stderr, "[remapper] creating new remapper set, block size %u, with %llu blocks in the initial partition\n", block_size, block_count);
 
     uint64_t block_table_end = ((block_size*2 + 8*(1+block_count)) + block_size - 1) / block_size;
 
