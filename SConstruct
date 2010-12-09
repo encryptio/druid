@@ -19,6 +19,7 @@ env.Object( 'obj/main.o', 'src/main.c' )
 env.Object( 'obj/remapper.o', 'src/remapper.c' )
 env.Object( 'obj/nbd.o', 'src/nbd.c' )
 env.Object( 'obj/distributor.o', 'src/distributor.c' )
+env.Object( 'obj/fileio.o', 'src/fileio.c' )
 
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
@@ -26,7 +27,7 @@ env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 
 # final programs
 
-env.Program( 'prog/druid', ['obj/main.o', 'obj/remapper.o', 'obj/nbd.o', 'obj/distributor.o'] )
+env.Program( 'prog/druid', ['obj/main.o', 'obj/remapper.o', 'obj/nbd.o', 'obj/distributor.o', 'obj/fileio.o'] )
 
 # tests
 
