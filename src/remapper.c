@@ -179,6 +179,8 @@ uint64_t rm_size(struct remapper *rm, uint32_t partition) {
 bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_count) {
     uint8_t buffer[128];
 
+    fprintf(stderr, "[remapper] creating new remapper set, block size %d, with %d blocks in the initial partition\n", block_size, block_count);
+
     uint64_t block_table_end = ((block_size*2 + 8*(1+block_count)) + block_size - 1) / block_size;
 
     memcpy(buffer, "REMAPPER", 8);
@@ -190,6 +192,8 @@ bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_coun
 
     if ( !dis_write(dis, 0, 44, buffer) )
         return false;
+
+    fprintf(stderr, "[remapper] wrote header\n");
 
     memcpy(buffer, "PARTTBLS", 8);
     pack_be32(1, buffer+8); // number of partitions
@@ -215,6 +219,8 @@ bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_coun
     if ( !dis_write(dis, block_size, 92, buffer) )
         return false;
 
+    fprintf(stderr, "[remapper] wrote partition table\n");
+
     memcpy(buffer, "JUMPTBLS", 8);
 
     if ( !dis_write(dis, block_size*2, 8, buffer) )
@@ -234,6 +240,8 @@ bool rm_create(struct distributor *dis, uint32_t block_size, uint64_t block_coun
     if ( todo )
         if ( !dis_write(dis, at, todo, buffer) )
             return false;
+
+    fprintf(stderr, "[remapper] wrote jump table\n");
 
     return true;
 }
