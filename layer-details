@@ -62,7 +62,8 @@ header:
     block size in bytes (be32)
     number of blocks (be64)
     block offset of partition information (be64) (typically 1)
-    block offset of jump table (be64)
+    block offset of jump table (be64) (typically 2)
+    next free block index (be64)
 
 partition information:
     magic number "PARTTBLS"
@@ -74,7 +75,7 @@ partition information:
             all other bits reserved, should be 0
         length in bytes (must be a multiple of the block size) (be64)
         created timestamp (be64 from epoch)
-        modified timestamp (be64 from epoch)
+        reshaped timestamp (be64 from epoch)
         uuid (128 bits)
         number of block extents (be16)
         for each block extent:
