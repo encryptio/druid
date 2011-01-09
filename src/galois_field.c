@@ -1,5 +1,7 @@
 #include <inttypes.h>
 
+// TODO: look into fecpp
+
 #include "galois_field.h"
 
 #define NW 256
