@@ -93,14 +93,15 @@ jump table:
 "file" without qualification refers to a single backing representing
     the space to be used by a single disk. it may be a file on an
     existing filesystem, for the purposes of using the free space
-    on that drive, or it may be a raw block device.
+    on that drive, or it may be a block device, such as a raw disk or
+    partition.
 
 "chunk" refers to a contiguous area of the virtual device. they may
-    vary in size depending on the geometry of the redundancy.
+    vary in size depending on the geometry of the redundancy, but
+    they are always a multiple of 64MiB in size.
 
 "slice" refers to a contiguous area of a file, representing a part
-    of a chunk. precisely 64MiB at all times, although some of this
-    space is used for the checksums.
+    of a chunk. precisely 64MiB at all times.
 
 "set" refers to a group of files that, when used together in a
     distributor, allow access to a one-ended store.
@@ -110,35 +111,36 @@ there are four copies of the header; all are supposed to be identical,
     the valid copy with the largest rewrite index is used as the
     drive's header, and the other copies are replaced on startup.
 
+similar with the slice info tables.
+
+the four headers are at byte offsets 0, 128KiB, 256KiB, and 384KiB.
+
+a slice info table exists at offset 512KiB, and lasts for
+    (32 + 28 * max_slices) bytes, rounded up to the nearest multiple
+    of 4KiB. following the first slice info table (and its padding) is
+    a second copy of the slice info table, with the same padding.
+
+the crc table exists after the slice info tables (including their
+    alignment padding.) it lasts for
+    (8 + 4 * (maximum number of slices / (64*1024*1024/4096))) bytes.
+
+the first block data exists after the crc table, with its first
+    offset rounded up to the nearest multiple of 64MiB.
+
 the "mapped index" defines the ordering in the upper layer of the data
     stored here. mapped index 0 is first. all mapped indicies to the
     maximum mapped index in the header defines how many there are.
     note that without further information (in the slice info table),
     it is impossible to tell the size of the one-sided store.
 
-similar with the slice info table.
-
-the four headers are at byte offsets 0, 128KiB, 256KiB, and 384KiB.
-the slice info tables are at offsets 512KiB and 64MiB+256KiB.
-the first slice is located at offset 128MiB.
-    from then on, the slices are located at offsets 64MiB from 128MiB.
-
-the "maximum size" in the header is verified against the device size
-    if the given target is a device, and is used as a hard limit if
-    the given target is a file.
-
 redundancy method constants:
     0 -> plain mirror (a la raid 1)
         requires minwidth = 1
-    1 -> last is xor of the previous (a la raid 5)
+    1 -> last is xor of the others (a la raid 5)
         requires minwidth = width - 1
-    2 -> rs in GF(2^8)
+    2 -> reed-solomon in GF(2^8)
         requires width < 255.
     all other values reserved.
-
-it can be easily calculated that the maximum number of slices handled
-    by a file can be at most 1856852, thus, the maximum space handled
-    by a single file is approximately 113 tb.
 
 failure management:
     under partial failures of the header:
@@ -152,35 +154,50 @@ failure management:
 
     under failure of a single block of data:
         it is reconstructed (if possible) from the other locations,
-        the UBE count is incremented for the file and for the slice,
-        then the data is rewritten to disk and verified. if it fails
-        a second time, the entire slice containing the block is
-        considered failed.
+        the UBE count is incremented for the file, the data slice, and
+        the crc slice.  then the data is rewritten to disk and
+        verified. if it fails a second time immediately following the
+        rewrite, the entire slice containing the incorrect data is
+        considered failed, and may be rebuilt in another location.
 
     if at any point the UBE count for the file exceeds its maximum,
         the file is considered entirely failed.
 
     if at any point the UBE count for a slice exceeds its maximum,
-        the slice is considered failed.
+        the slice is considered failed and may be rebuilt in another
+        location.
+
+    under failures of the crc blocks:
+        these cause errors to be detected in the slices themselves,
+        and will fail until remapped to another physical location on
+        disk, thus using different crc locations. failures specific
+        to the crc blocks are not handled specially.
+
+the crc table has all the data for every usable physical location in
+    the file starting with the first block used as a slice. crc
+    locations corresponding to unused slices may have any data in
+    them, and are initialized when the slice is allocated.
 
 header:
     magic number "DISTRIB0"
     crc checksum of the rest of the header (be32)
     rewrite index (be32)
     maximum mapped index (be64)
+    maximum slices in this file (be64)
     total UBE count (be32)
     maximum UBE count (be32)
     failed slices (be32)
     maximum failed slices (be32)
     uuid for this set (128 bits)
-    preferred chunk width (be32)
-    preferred chunk width minimum (be32)
+    preferred chunk width (be16)
+    preferred chunk width minimum (be16)
     this set's human name (be16 length prefixed string, no nulls)
-    this file's last location (be16 length prefixed string, no nulls)
+    this file's last access specification (be16 length prefixed
+        string, no nulls)
     number of files in set (be32)
     for each file:
-        the file's last known location (be16 length prefixed string,
-            no nulls)
+        the file's last known access specification (be16 length
+            prefixed string, no nulls)
 
 slice info table:
     magic number "SLICENFO"
@@ -190,20 +207,17 @@ slice info table:
     slices used (be64)
     for each slice:
         mapped index (be64)
-        chunk width total (be32)
-        chunk width minimum for proper retrieval (be32)
-        this slice's index in the chunk (be32)
-        redundancy method (be32)
+        chunk width total (be16)
+        chunk width minimum for proper retrieval (be16)
+        this slice's index in the chunk (be16)
+        redundancy method (be16)
         UBE count (be32)
         maximum UBE count (be32)
         flags (be32)
             bit 0: slice failed
             all other bits reserved, should be 0
 
-slice:
-    64KiB space reserved for crcs of the data slightly less is used.
-        offset 0: crc of data 64KiB -> +4KiB
-        offset 4: crc of data 68KiB -> +4KiB
-        ...
-    arbitrary data for 64MiB-64KiB
-
+crc table:
+    magic number "CRCTABLE"
+    for each 4kb chunk of slice data (see above):
+        4 byte crc of the data.
