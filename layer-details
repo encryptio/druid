@@ -189,15 +189,15 @@ header:
     failed slices (be32)
     maximum failed slices (be32)
     uuid for this set (128 bits)
+    uuid for this file (128 bits)
     preferred chunk width (be16)
     preferred chunk width minimum (be16)
     this set's human name (be16 length prefixed string, no nulls)
-    this file's last access specification (be16 length prefixed
-        string, no nulls)
     number of files in set (be32)
-    for each file:
+    for each file: (including this one)
         the file's last known access specification (be16 length
             prefixed string, no nulls)
+        uuid for that file (128 bits)
 
 slice info table:
     magic number "SLICENFO"
