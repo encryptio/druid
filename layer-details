@@ -1,3 +1,7 @@
+-- NOTES --
+
+"crc"s are crc-32s as in ZMODEM, PKZIP, Ethernet, etc
+
 -- OVERVIEW --
 
 filesystem (ext4, hfs+, ntfs, etc)
@@ -26,8 +30,6 @@ distributor
          the disks by allocating horizontal arrays of RS-joined chunks
          on appropriate disks, rather than all disks at the same time.
     try: use a crc-32 for finding read failures
-    try: xor the stored crc-32 with the crc of the zero block to
-         reduce initialization times
 
     want: configurationless restarts by storing the configuration on
           all storage drives
@@ -135,11 +137,13 @@ the "mapped index" defines the ordering in the upper layer of the data
 
 redundancy method constants:
     0 -> plain mirror (a la raid 1)
-        requires minwidth = 1
+        requires reqwidth = 1
     1 -> last is xor of the others (a la raid 5)
-        requires minwidth = width - 1
+        requires reqwidth = width - 1
     2 -> reed-solomon in GF(2^8)
         requires width < 255.
+    3 -> no redundancy
+        requires reqwidth = width
     all other values reserved.
 
 failure management:
@@ -181,23 +185,27 @@ the crc table has all the data for every usable physical location in
 header:
     magic number "DISTRIB0"
     crc checksum of the rest of the header (be32)
-    rewrite index (be32)
-    maximum mapped index (be64)
-    maximum slices in this file (be64)
-    total UBE count (be32)
-    maximum UBE count (be32)
-    failed slices (be32)
-    maximum failed slices (be32)
+
+    [set-wide section]
     uuid for this set (128 bits)
-    uuid for this file (128 bits)
+    rewrite index (be32)
     preferred chunk width (be16)
-    preferred chunk width minimum (be16)
+    preferred chunk width required (be16)
     this set's human name (be16 length prefixed string, no nulls)
     number of files in set (be32)
     for each file: (including this one)
         the file's last known access specification (be16 length
             prefixed string, no nulls)
         uuid for that file (128 bits)
+
+    [file-wide section]
+    uuid for this file (128 bits)
+    maximum mapped index (be64)
+    maximum slices in this file (be64)
+    failed slices (be32)
+    maximum failed slices (be32)
+    total UBE count (be32)
+    maximum UBE count (be32)
 
 slice info table:
     magic number "SLICENFO"
@@ -208,7 +216,7 @@ slice info table:
     for each slice:
         mapped index (be64)
         chunk width total (be16)
-        chunk width minimum for proper retrieval (be16)
+        chunk width required for proper retrieval (be16)
         this slice's index in the chunk (be16)
         redundancy method (be16)
         UBE count (be32)
