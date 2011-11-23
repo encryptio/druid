@@ -70,11 +70,9 @@ int main(int argc, char **argv) {
 
     suite("reed solomon error correction");
 
-    for (int n = 2; n <= 8; n++) {
+    for (int n = 2; n <= 8; n++)
         for (int m = 1; m <= 8; m++)
-            for (int i = 0; i < 5; i++)
-                rs_test_run(n, m);
-    }
+            rs_test_run(n, m);
 
     test_exit();
 }

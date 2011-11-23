@@ -7,22 +7,25 @@
 #include "test.h"
 
 #define ALL1(block) \
-    for (int_fast16_t a = 0; a <= 255; a++) { \
+    for (uint8_t a = 0; ; a++) { \
         block \
+        if ( a == 255 ) break; \
     }
 
 #define ALL2(block) \
-    for (int_fast16_t a = 0; a <= 255; a++) { \
-        for (int_fast16_t b = 0; b <= 255; b++) { \
+    for (uint8_t a = 0; ; a++) { \
+        for (uint8_t b = 0; ; b++) { \
             block \
+            if ( b == 255 ) break; \
         } \
+        if ( a == 255 ) break; \
     }
 
 #define SOME3(block) \
-    for (int_fast16_t i = 0; i < 30000; i++) {\
-        int_fast16_t a = random(); \
-        int_fast16_t b = random(); \
-        int_fast16_t c = random(); \
+    for (int_fast16_t i = 0; i < 50000; i++) {\
+        uint8_t a = random(); \
+        uint8_t b = random(); \
+        uint8_t c = random(); \
         block \
     }
 
