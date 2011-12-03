@@ -43,6 +43,18 @@ static void mem_mmap_close(struct bdev *self) {
     free(self);
 }
 
+static void mem_mmap_clear_caches(struct bdev *self) {
+    struct mem_io *io = self->m;
+    if ( msync(io->base, io->mmaplen, MS_INVALIDATE) )
+        err(1, "Couldn't msync base in mem_mmap_clear_caches");
+}
+
+static void mem_mmap_flush(struct bdev *self) {
+    struct mem_io *io = self->m;
+    if ( msync(io->base, io->mmaplen, MS_SYNC) )
+        err(1, "Couldn't msync base in mem_mmap_flush");
+}
+
 struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     assert(block_size);
     assert(!(block_size & (block_size-1))); // is a power of two
@@ -58,6 +70,8 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
     dev->close = mem_malloc_close;
+    dev->clear_caches = NULL;
+    dev->flush = NULL;
 
     dev->block_size = block_size;
     dev->block_count = blocks;
@@ -91,6 +105,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
     dev->close = mem_mmap_close;
+    dev->clear_caches = mem_mmap_clear_caches;
+    dev->flush = mem_mmap_flush;
 
     dev->block_size = block_size;
     dev->block_count = blocks;
