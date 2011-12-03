@@ -57,6 +57,41 @@ void test_consistency_bdev(struct bdev *dev) {
     free(basis);
 }
 
+void test_byte_interface(struct bdev *dev) {
+    uint8_t *partial, *partial2;
+    uint64_t size = dev->block_size * dev->block_count;
+    if ( size > 1024*1024*8 )
+        size = 1024*1024*8; // 8 MiB limit
+
+    if ( (partial = malloc(size)) == NULL )
+        err(1, "Couldn't malloc space for partial block device");
+    if ( (partial2 = malloc(size)) == NULL )
+        err(1, "Couldn't malloc space for partial block device");
+    memset(partial, 0, size);
+
+    test(dev->write_bytes(dev, 0, size, partial));
+
+    for (int i = 0; i < 1000; i++) {
+        uint64_t this_size = random() % (random() % 16 ? (size < 32 ? size : 32) : size);
+        uint64_t offset = random() % (size-this_size);
+
+        test( dev->read_bytes(dev, offset, this_size, partial2) );
+        if ( this_size ) {
+            test( memcmp(partial2, partial+offset, this_size) == 0 );
+
+            for (int j = offset; j < offset+this_size; j++)
+                partial[j] = random() & 0xFF;
+
+            test( dev->write_bytes(dev, offset, this_size, partial+offset) );
+            test( dev->read_bytes(dev, offset, this_size, partial2) );
+            test( memcmp(partial2, partial+offset, this_size) == 0 );
+        }
+    }
+
+    free(partial);
+    free(partial2);
+}
+
 int main(int argc, char **argv) {
     srandom(time(NULL));
     test_initialize(argc, argv);
@@ -73,6 +108,7 @@ int main(int argc, char **argv) {
             test(dev != NULL);
             if ( dev ) {
                 test_consistency_bdev(dev);
+                test_byte_interface(dev);
                 dev->close(dev);
             }
         }
