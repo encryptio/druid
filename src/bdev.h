@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 struct bdev {
-    void *m;
+    void *m; // extra device-specific information
 
     uint64_t block_size;
     uint64_t block_count;
