@@ -32,6 +32,7 @@ static void mem_malloc_close(struct bdev *self) {
     struct mem_io *io = self->m;
     free(io->base);
     free(io);
+    free(self->generic_block_buffer);
     free(self);
 }
 
@@ -40,6 +41,7 @@ static void mem_mmap_close(struct bdev *self) {
     if ( !munmap(io->base, io->mmaplen) )
         err(1, "Couldn't munmap base in mem_mmap_close");
     free(io);
+    free(self->generic_block_buffer);
     free(self);
 }
 
@@ -74,6 +76,9 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->close = mem_malloc_close;
     dev->clear_caches = NULL;
     dev->flush = NULL;
+
+    if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
+        err(1, "Couldn't allocate space for generic block buffer");
 
     dev->block_size = block_size;
     dev->block_count = blocks;
@@ -111,6 +116,9 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     dev->close = mem_mmap_close;
     dev->clear_caches = mem_mmap_clear_caches;
     dev->flush = mem_mmap_flush;
+
+    if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
+        err(1, "Couldn't allocate space for generic block buffer");
 
     dev->block_size = block_size;
     dev->block_count = blocks;

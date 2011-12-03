@@ -112,6 +112,7 @@ static void verify_close(struct bdev *self) {
     struct verify_io *io = self->m;
     free(io->hash_block);
     free(io);
+    free(self->generic_block_buffer);
     free(self);
 }
 
@@ -151,6 +152,9 @@ struct bdev *verify_create(struct bdev *base) {
     dev->close        = verify_close;
     dev->flush        = NULL;
     dev->clear_caches = verify_clear_caches;
+
+    if ( (dev->generic_block_buffer = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for bdev:verify_io:generic_block_buffer");
 
     if ( (io->hash_block = malloc(dev->block_size)) == NULL )
         err(1, "Couldn't allocate space for bdev:verify_io:hash_block");
