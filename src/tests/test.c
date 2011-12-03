@@ -22,13 +22,15 @@ void test_initialize(int argc, char **argv) {
 void suite(char *name) {
     if ( TEST_current_suite ) {
         if ( TEST_failed || TEST_verbose ) {
-            printf("\r%s: %ds %df\n%s", TEST_current_suite, TEST_succeeded, TEST_failed, name);
+            fprintf(stderr, "\r%s: %ds %df\n%s", TEST_current_suite, TEST_succeeded, TEST_failed, name);
         }
     } else {
         if ( TEST_verbose )
-            printf("%s", name);
+            fprintf(stderr, "%s", name);
     }
-    TEST_current_suite = name;
+    if ( TEST_current_suite )
+        free(TEST_current_suite);
+    TEST_current_suite = strdup(name);
     TEST_failed = 0;
     TEST_succeeded = 0;
 }
@@ -40,11 +42,14 @@ void test(bool success) {
         TEST_allsucceeded = false;
         TEST_failed++;
     }
+
+    if ( (TEST_failed + TEST_succeeded % 100 == 0) && TEST_verbose )
+        fprintf(stderr, "\r%s: %ds %df", TEST_current_suite, TEST_succeeded, TEST_failed);
 }
 
 void test_exit() {
     if ( TEST_failed || TEST_verbose ) {
-        printf("\r%s: %ds %df\n", TEST_current_suite, TEST_succeeded, TEST_failed);
+        fprintf(stderr, "\r%s: %ds %df\n", TEST_current_suite, TEST_succeeded, TEST_failed);
     }
     exit(TEST_allsucceeded ? EXIT_SUCCESS : EXIT_FAILURE);
 }
