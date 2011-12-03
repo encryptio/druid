@@ -19,10 +19,12 @@ env.Object( 'obj/rs/reed_solomon.o', 'src/rs/reed_solomon.c' )
 #env.Object( 'obj/remapper.o', 'src/remapper.c' )
 env.Object( 'obj/nbd.o', 'src/nbd.c' )
 env.Object( 'obj/baseio.o', 'src/baseio.c' )
+env.Object( 'obj/verify.o', 'src/verify.c' )
 
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
 env.Object( 'obj/tests/baseio.o', 'src/tests/baseio.c' )
+env.Object( 'obj/tests/verify.o', 'src/tests/verify.c' )
 env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 
 # final programs
@@ -39,4 +41,7 @@ env.Command(".test.rs.passed", 'prog/tests/rs', runTest)
 
 env.Program( 'prog/tests/baseio', ['obj/baseio.o', 'obj/tests/test.o', 'obj/tests/baseio.o'] )
 env.Command(".test.baseio.passed", 'prog/tests/baseio', runTest);
+
+env.Program( 'prog/tests/verify', ['obj/verify.o', 'obj/baseio.o', 'obj/tests/test.o', 'obj/tests/verify.o'] )
+env.Command(".test.verify.passed", 'prog/tests/verify', runTest);
 
