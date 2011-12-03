@@ -67,6 +67,8 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
         err(1, "Couldn't allocate space for bdev :: mem_io");
     struct mem_io *io = dev->m;
 
+    dev->read_bytes   = generic_read_bytes;
+    dev->write_bytes  = generic_write_bytes;
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
     dev->close = mem_malloc_close;
@@ -102,6 +104,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
         err(1, "Couldn't allocate space for bdev :: mem_io");
     struct mem_io *io = dev->m;
 
+    dev->read_bytes = generic_read_bytes;
+    dev->write_bytes = generic_write_bytes;
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
     dev->close = mem_mmap_close;

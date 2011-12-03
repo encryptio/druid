@@ -144,6 +144,8 @@ struct bdev *verify_create(struct bdev *base) {
     dev->block_size = base->block_size;
     
     // accessor functions
+    dev->read_bytes   = generic_read_bytes;
+    dev->write_bytes  = generic_write_bytes;
     dev->read_block   = verify_read_block;
     dev->write_block  = verify_write_block;
     dev->close        = verify_close;
