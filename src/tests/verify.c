@@ -94,7 +94,7 @@ void test_corruption(struct bdev *dev, struct bdev *basis) {
     // corrupt block 0 in basis (hash block)
     test( basis->read_block(basis, 0, block) );
     for (int i = 0; i < basis->block_size; i++)
-        if ( i % 2 == 1 )
+        if ( i % 4 == 1 )
             block[i] = block[i] ^ 0x01;
     test( basis->write_block(basis, 0, block) );
 

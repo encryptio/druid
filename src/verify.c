@@ -6,9 +6,10 @@
 #include <err.h>
 
 #include "endian.h"
+#include "crc.h"
 
 /*
- * verification layer, using crc16 (ethernet polynomial)
+ * verification layer, using crc32
  *
  * inserts hash blocks in intervals in the device below it,
  * verifies when reading and updates when writing.
@@ -20,9 +21,9 @@
  * each /Hd+/ is called a "chunk"
  *
  * hash blocks have the following structure:
- *   16-bit crc, big-endian, for data block 1 in the chunk
- *   16-bit crc, big-endian, for data block 2 in the chunk
- *   16-bit crc, big-endian, for data block 3 in the chunk
+ *   32-bit crc, big-endian, for data block 1 in the chunk
+ *   32-bit crc, big-endian, for data block 2 in the chunk
+ *   32-bit crc, big-endian, for data block 3 in the chunk
  *   ...
  *
  */
@@ -37,14 +38,6 @@ struct verify_io {
     uint8_t *hash_block;
     uint64_t which_hash_block;
 };
-
-static uint16_t verify_calc_crc16(uint8_t *ram, uint64_t len) {
-    uint16_t val = 0;
-    // TODO: implement actual crc
-    for (int i = 0; i < len; i++)
-        val += ram[i]*(i+1);
-    return val;
-}
 
 static inline bool verify_is_hblock(struct bdev *dev, uint64_t index) {
     struct verify_io *io = dev->m;
@@ -66,12 +59,12 @@ static bool verify_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
         io->which_hash_block = needed_hash_block;
     }
 
-    uint16_t needed_crc = unpack_be16(io->hash_block+interior_offset*2);
+    uint32_t needed_crc = unpack_be32(io->hash_block+interior_offset*4);
 
     if ( !io->base->read_block(io->base, needed_data_block, into) )
         return false;
 
-    uint16_t read_crc = verify_calc_crc16(into, self->block_size);
+    uint32_t read_crc = calc_crc32(into, self->block_size);
 
     if ( needed_crc != read_crc ) {
         //fprintf(stderr, "[verify] CRC error on block %llu (mapped %llu) - %d != %d\n", (unsigned long long)needed_data_block, (unsigned long long)which, read_crc, needed_crc);
@@ -97,7 +90,8 @@ static bool verify_write_block(struct bdev *self, uint64_t which, uint8_t *from)
     }
     
     // write the crc
-    pack_be16(verify_calc_crc16(from, self->block_size), io->hash_block+interior_offset*2);
+    // TODO: don't write the crc header until chunk change or flushed
+    pack_be32(calc_crc32(from, self->block_size), io->hash_block+interior_offset*4);
     if ( !io->base->write_block(io->base, needed_hash_block, io->hash_block) )
         return false;
 
@@ -161,7 +155,7 @@ struct bdev *verify_create(struct bdev *base) {
     io->which_hash_block = -1; // overflows
 
     // calculate the constants needed for this base device
-    io->hashes_per_block = dev->block_size/2; // 2 bytes per hash
+    io->hashes_per_block = dev->block_size/4; // 4 bytes per hash
     io->hash_block_count = (base->block_count + io->hashes_per_block) / (1+io->hashes_per_block);
     io->data_block_count = base->block_count - io->hash_block_count;
 
