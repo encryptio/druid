@@ -6,11 +6,11 @@
 
 #include "test.h"
 
-static char *TEST_current_suite = NULL;
-static uint_fast32_t TEST_failed = 0;
-static uint_fast32_t TEST_succeeded = 0;
-static bool TEST_allsucceeded = true;
-static bool TEST_verbose = false;
+char *TEST_current_suite = NULL;
+uint_fast32_t TEST_failed = 0;
+uint_fast32_t TEST_succeeded = 0;
+bool TEST_allsucceeded = true;
+bool TEST_verbose = false;
 
 void test_initialize(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -33,18 +33,6 @@ void suite(char *name) {
     TEST_current_suite = strdup(name);
     TEST_failed = 0;
     TEST_succeeded = 0;
-}
-
-void test(bool success) {
-    if ( success ) {
-        TEST_succeeded++;
-    } else {
-        TEST_allsucceeded = false;
-        TEST_failed++;
-    }
-
-    if ( (TEST_failed + TEST_succeeded % 100 == 0) && TEST_verbose )
-        fprintf(stderr, "\r%s: %ds %df", TEST_current_suite, TEST_succeeded, TEST_failed);
 }
 
 void test_exit() {
