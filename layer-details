@@ -10,6 +10,9 @@ filesystem (ext4, hfs+, ntfs, etc)
 block device (nbd, iSCSI, ATAoE, etc)
     nbd allows linux access and is easy to code
 
+verifier
+    hashes data and bubbles up read errors in the case of hash failures
+
 remapper
     maps a set of virtual fixed size zeroed block devices onto a
     single one-ended data store.
@@ -22,14 +25,13 @@ remapper
 distributor
     maps a one-ended data store into a set of files or disks
 
-    handles disk failures (total and byte-wise)
+    handles disk failures (total and block-wise)
 
     try: map lazily, in large (>=64MiB) chunks
     try: keep mapping data on all disks
     try: allow parameterization of the RS codes to be independent of
          the disks by allocating horizontal arrays of RS-joined chunks
          on appropriate disks, rather than all disks at the same time.
-    try: use a crc-32 for finding read failures
 
     want: configurationless restarts by storing the configuration on
           all storage drives
