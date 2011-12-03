@@ -28,11 +28,6 @@ static bool mem_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
     return true;
 }
 
-static void mem_reinitialize(struct bdev *self) {
-    // do nothing
-    return;
-}
-
 static void mem_malloc_close(struct bdev *self) {
     struct mem_io *io = self->m;
     free(io->base);
@@ -62,7 +57,6 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
 
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
-    dev->reinitialize = mem_reinitialize;
     dev->close = mem_malloc_close;
 
     dev->block_size = block_size;
@@ -96,7 +90,6 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
 
     dev->read_block = mem_read_block;
     dev->write_block = mem_write_block;
-    dev->reinitialize = mem_reinitialize;
     dev->close = mem_mmap_close;
 
     dev->block_size = block_size;

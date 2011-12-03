@@ -13,7 +13,6 @@ struct bdev {
     bool (*read_block  )(struct bdev *self, uint64_t which, uint8_t *into);
     bool (*write_block )(struct bdev *self, uint64_t which, uint8_t *from);
     void (*close       )(struct bdev *self);
-    void (*reinitialize)(struct bdev *self);
 };
 
 #endif
