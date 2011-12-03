@@ -22,7 +22,7 @@
     }
 
 #define SOME3(block) \
-    for (int_fast16_t i = 0; i < 50000; i++) {\
+    for (int i = 0; i < 50000; i++) {\
         uint8_t a = random(); \
         uint8_t b = random(); \
         uint8_t c = random(); \
