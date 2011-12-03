@@ -21,14 +21,13 @@
 #define NBD_CMD_WRITE 1
 #define NBD_CMD_DISC 2
 
-struct nbd_server * nbd_create(uint16_t port, struct remapper *rm, uint32_t partition) {
+struct nbd_server * nbd_create(uint16_t port, struct bdev *dev) {
     struct nbd_server *nbd;
     if ( (nbd = malloc(sizeof(struct nbd_server))) == NULL )
         err(1, "Couldn't allocate space for ndb_server");
 
-    nbd->rm = rm;
+    nbd->dev = dev;
     nbd->port = port;
-    nbd->partition = partition;
 
     return nbd;
 }
@@ -63,9 +62,10 @@ static bool nbd_recvall(int s, uint8_t *msg, int len) {
 
 static uint8_t databuffer[128*1024];
 static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
+    struct bdev *dev = nbd->dev;
     memcpy(databuffer, NBD_PASSWD, 8);
     memcpy(databuffer+8, NBD_INITMAGIC, 8);
-    pack_be64(rm_size(nbd->rm, nbd->partition), databuffer+16);
+    pack_be64(dev->block_size*dev->block_count, databuffer+16);
     memset(databuffer+24, 0, 128);
     if ( !nbd_sendall(s, databuffer, 24+128) ) return;
     
@@ -93,7 +93,7 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
         bool res;
         switch ( cmd ) {
             case NBD_CMD_READ:
-                res = rm_read(nbd->rm, nbd->partition, from, len, databuffer);
+                res = dev->read_bytes(dev, from, len, databuffer);
 
                 memcpy(buffer, (void*) NBD_RESPONSE_MAGIC, 4);
                 pack_be32((uint32_t) !res, buffer+4);
@@ -109,7 +109,7 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
             case NBD_CMD_WRITE:
                 if ( !nbd_recvall(s, databuffer, len) ) return;
 
-                res = rm_write(nbd->rm, nbd->partition, from, len, databuffer);
+                res = dev->write_bytes(dev, from, len, databuffer);
 
                 memcpy(buffer, (void*) NBD_RESPONSE_MAGIC, 4);
                 pack_be32((uint32_t) !res, buffer+4);

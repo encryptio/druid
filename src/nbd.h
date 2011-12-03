@@ -3,15 +3,14 @@
 
 #include <inttypes.h>
 
-#include "remapper.h"
+#include "bdev.h"
 
 struct nbd_server {
-    struct remapper *rm;
+    struct bdev *dev;
     uint16_t port;
-    uint32_t partition;
 };
 
-struct nbd_server * nbd_create(uint16_t port, struct remapper *rm, uint32_t partition);
+struct nbd_server * nbd_create(uint16_t port, struct bdev *dev);
 void nbd_listenloop(struct nbd_server *nbd);
 
 #endif
