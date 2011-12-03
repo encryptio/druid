@@ -18,7 +18,7 @@ env.Command( 'prog/tests', [], Mkdir( '$TARGET' ) )
 
 env.Object( 'obj/rs/galois_field.o', 'src/rs/galois_field.c' )
 env.Object( 'obj/rs/reed_solomon.o', 'src/rs/reed_solomon.c' )
-#env.Object( 'obj/main.o', 'src/main.c' )
+env.Object( 'obj/main.o', 'src/main.c' )
 #env.Object( 'obj/remapper.o', 'src/remapper.c' )
 env.Object( 'obj/nbd.o', 'src/nbd.c' )
 env.Object( 'obj/baseio.o', 'src/baseio.c' )
@@ -33,7 +33,7 @@ env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 
 # final programs
 
-#env.Program( 'prog/druid', ['obj/main.o', 'obj/remapper.o', 'obj/nbd.o', 'obj/distributor.o', 'obj/fileio.o'] )
+env.Program( 'prog/druid', ['obj/main.o', 'obj/nbd.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/verify.o'] )
 
 # tests
 
