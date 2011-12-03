@@ -2,15 +2,9 @@
 #include <inttypes.h>
 #include <time.h>
 
-#include "reed_solomon.h"
-#include "galois_field.h"
+#include "rs/reed_solomon.h"
+#include "rs/galois_field.h"
 #include "test.h"
-
-rs_matrix * rs_create_reversal(rs_matrix *mat, uint8_t *exists); // creates a data x data matrix
-void rs_free(rs_matrix *mat);
-
-void rs_apply_checksum(rs_matrix *mat, uint8_t *in, uint8_t *out);
-void rs_apply_reversal(rs_matrix *mat, uint8_t *in, uint8_t *out);
 
 void rs_test_run(int n, int m) {
     rs_matrix *mat = rs_create(n,m);

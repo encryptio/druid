@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-#include "galois_field.h"
+#include "rs/galois_field.h"
 #include "test.h"
 
 #define ALL1(block) \
