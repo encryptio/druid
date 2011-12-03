@@ -52,6 +52,9 @@ void test_consistency_bdev(struct bdev *dev) {
             basis[j] = random() & 0xFF;
         test_consistency_bdev_with_block(dev, basis, block);
     }
+
+    free(block);
+    free(basis);
 }
 
 int main(int argc, char **argv) {
