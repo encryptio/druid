@@ -6,6 +6,9 @@ def runTest(env,target,source):
     app = str(source[0].abspath)
     if not subprocess.call(app):
         open(str(target[0]),'w').write("PASSED\n")
+    else:
+        return 1
+    return None
 
 env.Command( 'obj', [], Mkdir( '$TARGET' ) )
 env.Command( 'prog', [], Mkdir( '$TARGET' ) )
