@@ -148,12 +148,13 @@ ERROR:
 
 struct fd_io {
     int fd;
+    off_t offset;
 };
 
 static bool fd_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
     assert(which < self->block_count);
     struct fd_io *io = self->m;
-    ssize_t ret = pread(io->fd, into, self->block_size, which*self->block_size);
+    ssize_t ret = pread(io->fd, into, self->block_size, which*self->block_size+io->offset);
     if ( ret == -1 ) {
         fprintf(stderr, "[baseio:fd] Couldn't read from file: %s\n", strerror(errno));
         return false;
@@ -169,7 +170,7 @@ static bool fd_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
 static bool fd_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
     assert(which < self->block_count);
     struct fd_io *io = self->m;
-    ssize_t ret = pwrite(io->fd, from, self->block_size, which*self->block_size);
+    ssize_t ret = pwrite(io->fd, from, self->block_size, which*self->block_size+io->offset);
     if ( ret == -1 ) {
         fprintf(stderr, "[baseio:fd] Couldn't write to file: %s\n", strerror(errno));
         return false;
@@ -216,6 +217,7 @@ struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_
     dev->block_count = blocks;
 
     io->fd = fd;
+    io->offset = offset;
 
     return dev;
 }
