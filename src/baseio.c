@@ -42,7 +42,7 @@ static void mem_malloc_close(struct bdev *self) {
 
 static void mem_mmap_close(struct bdev *self) {
     struct mem_io *io = self->m;
-    if ( !munmap(io->base, io->mmaplen) )
+    if ( munmap(io->base, io->mmaplen) == -1 )
         err(1, "Couldn't munmap base in mem_mmap_close");
     free(io);
     free(self->generic_block_buffer);
