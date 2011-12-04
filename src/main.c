@@ -1,6 +1,7 @@
 #include "nbd.h"
 #include "baseio.h"
 #include "verify.h"
+#include "partitioner.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,9 @@ int main(void) {
     assert(base);
     struct bdev *v = verify_create(base);
     assert(v);
+    partitioner_initialize(v);
+    //struct bdev *p = partitioner_open(v, 0);
+    //assert(p);
     struct nbd_server *nbd = nbd_create(1234, v);
     assert(nbd);
     nbd_listenloop(nbd);

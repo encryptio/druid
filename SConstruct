@@ -22,6 +22,7 @@ env.Object( 'obj/main.o', 'src/main.c' )
 env.Object( 'obj/nbd.o', 'src/nbd.c' )
 env.Object( 'obj/baseio.o', 'src/baseio.c' )
 env.Object( 'obj/verify.o', 'src/verify.c' )
+env.Object( 'obj/partitioner.o', 'src/partitioner.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 
@@ -33,7 +34,7 @@ env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 
 # final programs
 
-env.Program( 'prog/druid', ['obj/main.o', 'obj/nbd.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/verify.o', 'obj/crc.o'] )
+env.Program( 'prog/druid', ['obj/main.o', 'obj/nbd.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/verify.o', 'obj/partitioner.o', 'obj/crc.o'] )
 
 # tests
 
