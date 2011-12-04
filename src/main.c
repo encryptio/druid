@@ -19,16 +19,17 @@ int main(void) {
     struct bdev *base = bio_create_posixfd(1024, fd, 1024*1024, 0);
     assert(base);
 
+    /*
     struct bdev *v = verify_create(base);
     assert(v);
-
-    /*
-    partitioner_initialize(v);
-    struct bdev *p = partitioner_open(v, 0);
-    assert(p);
     */
 
-    struct nbd_server *nbd = nbd_create(1234, v);
+    partitioner_initialize(base);
+    partitioner_set_part_size(base, 3, 10000);
+    struct bdev *p = partitioner_open(base, 3);
+    assert(p);
+
+    struct nbd_server *nbd = nbd_create(1234, p);
     assert(nbd);
     nbd_listenloop(nbd);
 }

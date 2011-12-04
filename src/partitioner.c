@@ -188,10 +188,14 @@ static bool partitioner_mark_block_as(struct part_io *io, uint64_t which, bool u
 
     uint64_t interior_index = which % io->bitmap_blocks_per_map;
 
+    bool old = bit_get(io->bitmap_block, interior_index);
+
     if ( used ) {
         bit_set(io->bitmap_block, interior_index);
+        if ( !old ) io->blocks_used++;
     } else {
         bit_clear(io->bitmap_block, interior_index);
+        if ( old ) io->blocks_used--;
     }
 
     // TODO: cache
@@ -277,7 +281,7 @@ bool partitioner_initialize(struct bdev *dev) {
     memcpy(header, PARTITION_MAGIC, 8);
     pack_be64(dev->block_count, header+8);
     pack_be64(dev->block_size, header+16);
-    pack_be64(10000ULL, header+PARTITION_SIZE_OFFSET); // one partition, 10000 blocks
+    //pack_be64(10000ULL, header+PARTITION_SIZE_OFFSET); // one partition, 10000 blocks
 
     bool ret = true;
     if ( !dev->write_block(dev, 0, header) ) {
@@ -308,7 +312,7 @@ END:
     return ret;
 }
 
-bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t blocks) {
+bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_size) {
     if ( dev->block_size < 512 ) {
         fprintf(stderr, "[partitioner] can't edit a device with a block size less than 512 bytes");
         return false;
@@ -319,7 +323,129 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t blocks)
         return false;
     }
 
-    fprintf(stderr, "[partitioner] partitioner_set_part_size not implemented\n");
+    struct bdev *partitioner = partitioner_open(dev, -1);
+    struct part_io *io = partitioner->m;
+
+    uint8_t *blockbuf, *blockbuf2;
+    if ( (blockbuf = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for blockbuf");
+    if ( (blockbuf2 = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for blockbuf2");
+
+    uint64_t old_size = partitioner_get_part_size(io, partition);
+
+    if ( new_size == old_size )
+        return true;
+
+    bool enlarging = new_size > old_size;
+
+    if ( enlarging ) {
+        // make space for new map area (overestimate by at most 1 block)
+        uint64_t blocks_to_pad = (new_size-old_size + io->maps_blocks_per_map-1) / io->maps_blocks_per_map;
+
+        // scan the map area for items that may be removed
+        uint64_t bad_area_start = DATA_START(io);
+        uint64_t bad_area_end   = bad_area_start+blocks_to_pad;
+
+        fprintf(stderr, "[partitioner] scanning for blocks needing remapping\n");
+
+        for (uint64_t i = 0; i < io->mapped_total_size; i++) {
+            uint64_t maploc = partitioner_block_maploc(io, i);
+            if ( maploc == 1 ) goto OKERR;
+            
+            if ( maploc >= bad_area_start && maploc < bad_area_end ) {
+                // needs to be remapped elsewhere
+
+                uint64_t newloc = partitioner_scan_free_block(io);
+                if ( maploc == 0 ) {
+                    fprintf(stderr, "[partitioner] remap failed, out of space!\n");
+                    goto ERR;
+                }
+
+                fprintf(stderr, "[partitioner] remapping %llu -> %llu\n",
+                        (unsigned long long) maploc,
+                        (unsigned long long) newloc);
+
+                // copy the block data
+                if ( !dev->read_block( dev, maploc, blockbuf) ) goto OKERR;
+                if ( !dev->write_block(dev, newloc, blockbuf) ) goto OKERR;
+
+                // mark as used
+                if ( !partitioner_mark_block_as(io, newloc, true ) ) goto OKERR;
+
+                // write new location
+                if ( !partitioner_block_set_maploc(io, i, newloc) ) goto OKERR;
+
+                // mark old as free
+                if ( !partitioner_mark_block_as(io, maploc, false) ) goto OKERR;
+            }
+        }
+
+        fprintf(stderr, "[partitioner] shifting mapping blocks\n");
+
+        // shift the mapping blocks over
+        uint64_t map_shift = new_size - old_size;
+
+        uint64_t start_shift_at = 0;
+        for (int i = 0; i < partition; i++)
+            start_shift_at += partitioner_get_part_size(io, i);
+
+        uint64_t end_shift_at = io->mapped_total_size;
+        fprintf(stderr, "shift_at=%llu..%llu\n", start_shift_at, end_shift_at);
+
+        // TODO: optimize, this is really slow
+        if ( end_shift_at > 0 ) {
+            for (uint64_t i = end_shift_at-1; i >= start_shift_at; i--) {
+                fprintf(stderr, "shifting block %llu\n", i);
+                uint64_t blk = partitioner_block_maploc(io, i);
+                if ( blk == 1 ) goto ERR;
+                partitioner_block_set_maploc(io, i+map_shift, blk);
+            }
+        }
+
+        fprintf(stderr, "[partitioner] clearing new mapping\n");
+
+        // clear the mappings that are already there
+        for (uint64_t i = start_shift_at; i < start_shift_at+map_shift; i++)
+            partitioner_block_set_maploc(io, i, 0);
+
+        fprintf(stderr, "[partitioner] marking as used\n");
+
+        // mark the map as used
+        uint64_t map_mark_start = MAPS_START(io) + end_shift_at/io->maps_blocks_per_map;
+        uint64_t map_mark_end   = MAPS_START(io) + (io->mapped_total_size - old_size + new_size + io->maps_blocks_per_map-1) / io->maps_blocks_per_map;
+        for (uint64_t i = map_mark_start; i <= map_mark_end; i++)
+            partitioner_mark_block_as(io, i, true);
+
+        fprintf(stderr, "[partitioner] setting partition size in header\n");
+
+        // finally, set the partition size
+        if ( !dev->read_block(dev, 0, blockbuf) ) goto ERR;
+        pack_be64(new_size, blockbuf+(partition+3)*8);
+        if ( !dev->write_block(dev, 0, blockbuf) ) goto ERR;
+        
+    } else {
+        // shrinking
+        fprintf(stderr, "[partitioner] partition shrinking not implemented\n");
+        goto OKERR;
+    }
+
+    free(blockbuf);
+    free(blockbuf2);
+    partitioner->close(partitioner);
+    return true;
+
+ERR:
+    fprintf(stderr, "[partitioner] resize failed at an unlucky time. your partitions are probably corrupted.\n");
+    goto BADQUIT;
+
+OKERR:
+    fprintf(stderr, "[partitioner] resize failed at a lucky time. data may be safe.\n");
+
+BADQUIT:
+    free(blockbuf);
+    free(blockbuf2);
+    partitioner->close(partitioner);
     return false;
 }
 
@@ -387,13 +513,14 @@ static void part_clear_caches(struct bdev *dev) {
 ////////////////////////////////////////////////////////////////////////////////
 // constructor
 
+// special case: partition=-1 means don't open a partition
 struct bdev *partitioner_open(struct bdev *dev, int partition) {
     if ( dev->block_size < 512 ) {
         fprintf(stderr, "[partitioner] can't open a device with a block size less than 512 bytes");
         return NULL;
     }
 
-    if ( partition < 0 || partition > MAX_PARTITION_NUMBER ) {
+    if ( partition < -1 || partition > MAX_PARTITION_NUMBER ) {
         fprintf(stderr, "[partitioner] bad partition number: %d\n", partition);
         return false;
     }
@@ -419,16 +546,25 @@ struct bdev *partitioner_open(struct bdev *dev, int partition) {
 
     mydev->block_size = dev->block_size;
 
-    mydev->block_count = partitioner_get_part_size(io, partition);
-    if ( mydev->block_count == 0 ) {
-        fprintf(stderr, "[partitioner] partition %d has not been defined in that device\n", partition);
-        goto ERR;
+    if ( partition != -1 ) {
+        mydev->block_count = partitioner_get_part_size(io, partition);
+        if ( mydev->block_count == 0 ) {
+            fprintf(stderr, "[partitioner] partition %d has not been defined in that device\n", partition);
+            goto ERR;
+        }
+        io->mapper_partition_offset = partitioner_get_partition_offset(io, partition);
     }
-    io->open_partition = partition;
-    io->mapper_partition_offset = partitioner_get_partition_offset(io, partition);
 
-    mydev->read_block   = part_read_block;
-    mydev->write_block  = part_write_block;
+    io->open_partition = partition;
+
+    if ( partition != -1 ) {
+        mydev->read_block  = part_read_block;
+        mydev->write_block = part_write_block;
+    } else {
+        // better to cause segfaults than corrupt data
+        mydev->read_block  = NULL;
+        mydev->write_block = NULL;
+    }
     mydev->close        = part_close;
     mydev->clear_caches = part_clear_caches;
     mydev->flush        = part_flush;
