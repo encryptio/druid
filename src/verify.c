@@ -110,7 +110,7 @@ static void verify_close(struct bdev *self) {
     free(self);
 }
 
-static void verify_flush(struct dev *self) {
+static void verify_flush(struct bdev *self) {
     struct verify_io *io = self->m;
     io->base->flush(io->base);
 }

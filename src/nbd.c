@@ -168,6 +168,8 @@ void nbd_listenloop(struct nbd_server *nbd) {
         fprintf(stderr, "[nbd] got client connection\n");
         nbd_handle_client_socket(nbd, clientfd);
         close(clientfd);
+        nbd->dev->flush(nbd->dev);
+        nbd->dev->clear_caches(nbd->dev);
         fprintf(stderr, "[nbd] closed client connection\n");
     }
 
