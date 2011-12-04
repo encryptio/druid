@@ -5,6 +5,8 @@
 #include <string.h>
 #include <err.h>
 
+#include "bdev.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 // bit vector manipulation routines
 
@@ -38,6 +40,8 @@ static inline uint32_t bit_count_in_u32(uint32_t v) {
 
 // ohohoho partition magic
 #define PARTITION_MAGIC "PART0000"
+#define MAX_PARTITION_NUMBER 60
+#define PARTITION_SIZE_OFFSET 24
 
 #define BITMAP_START(partio) (1ULL)
 #define MAPS_START(partio) ((partio)->bitmap_len+BITMAP_START(partio))
@@ -61,12 +65,19 @@ struct part_io {
     // TODO: cache bitmap_block writes using this memory
     uint8_t *bitmap_block;
     uint64_t bitmap_block_which; // physical location
+
+    // TODO: cache map_block writes using this memory
+    uint8_t *map_block;
+    uint64_t map_block_which; // physical location
+
+    int open_partition;
+    uint64_t mapper_partition_offset;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // helpers
 
-// initialize all fields except io->base and bitmap_block
+// initialize all fields except base, bitmap_block, open_partition, mapper_partition_offset, and map_block
 static bool partitioner_setup_io(struct part_io *io) {
     io->bitmap_blocks_per_map = io->base->block_size*8;
     io->maps_blocks_per_map   = io->base->block_size/8;
@@ -191,6 +202,63 @@ static bool partitioner_mark_block_as(struct part_io *io, uint64_t which, bool u
     }
 }
 
+static uint64_t partitioner_get_part_size(struct part_io *io, int partition) {
+    io->bitmap_block_which = 0;
+    io->base->read_block(io->base, 0, io->bitmap_block);
+
+    return unpack_be64(io->bitmap_block + (partition+3)*8);
+}
+
+static uint64_t partitioner_get_partition_offset(struct part_io *io, int partition) {
+    io->bitmap_block_which = 0;
+    io->base->read_block(io->base, 0, io->bitmap_block);
+
+    uint64_t offset = 0;
+    for (int i = 0; i < partition; i++)
+        offset += unpack_be64(io->bitmap_block + (partition+3)*8);
+
+    return offset;
+}
+
+static bool partitioner_open_map_block_for(struct part_io *io, uint64_t which) {
+    uint64_t map_block_wanted = MAPS_START(io) + which / io->maps_blocks_per_map;
+
+    if ( map_block_wanted != io->map_block_which ) {
+        io->map_block_which = 0;
+        if ( !io->base->read_block(io->base, map_block_wanted, io->map_block) )
+            return false;
+        io->map_block_which = map_block_wanted;
+    }
+
+    return true;
+}
+
+static uint64_t partitioner_block_maploc(struct part_io *io, uint64_t which) {
+    if ( !partitioner_open_map_block_for(io, which) )
+        return 1; // failure, never exists in a map
+
+    uint64_t interior = which % io->maps_blocks_per_map;
+    return unpack_be64(io->map_block + 8*interior);
+}
+
+static bool partitioner_block_set_maploc(struct part_io *io, uint64_t which, uint64_t to) {
+    if ( !partitioner_open_map_block_for(io, which) )
+        return false;
+
+    uint64_t interior = which % io->maps_blocks_per_map;
+    pack_be64(to, io->map_block + 8*interior);
+
+    if ( !io->base->write_block(io->base, io->map_block_which, io->map_block) ) {
+        io->map_block_which = 0;
+        return false;
+    }
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// public interface
+
 bool partitioner_initialize(struct bdev *dev) {
     if ( dev->block_size < 512 ) {
         fprintf(stderr, "[partitioner] can't initialize a device with a block size less than 512 bytes");
@@ -208,7 +276,7 @@ bool partitioner_initialize(struct bdev *dev) {
     memcpy(header, PARTITION_MAGIC, 8);
     pack_be64(dev->block_count, header+8);
     pack_be64(dev->block_size, header+16);
-    pack_be64(1024, header+24); // one partition, 1024 blocks
+    pack_be64(1024, header+PARTITION_SIZE_OFFSET); // one partition, 1024 blocks
 
     bool ret = dev->write_block(dev, 0, header);
 
@@ -241,7 +309,7 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t blocks)
         return false;
     }
 
-    if ( partition < 0 || partition > 62 ) {
+    if ( partition < 0 || partition > MAX_PARTITION_NUMBER ) {
         fprintf(stderr, "[partitioner] bad partition number: %d\n", partition);
         return false;
     }
@@ -250,18 +318,123 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t blocks)
     return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// object methods
+
+static bool part_read_block(struct bdev *dev, uint64_t which, uint8_t *into) {
+    struct part_io *io = dev->m;
+    uint64_t maploc = partitioner_block_maploc(io, which+io->mapper_partition_offset);
+    if ( maploc == 1 ) return false;
+
+    if ( maploc == 0 ) {
+        // not written to
+        memset(into, 0, dev->block_size);
+        return true;
+    } else {
+        return io->base->read_block(io->base, maploc, into);
+    }
+}
+
+static bool part_write_block(struct bdev *dev, uint64_t which, uint8_t *from) {
+    struct part_io *io = dev->m;
+    uint64_t maploc = partitioner_block_maploc(io, which+io->mapper_partition_offset);
+    if ( maploc == 1 ) return false;
+
+    if ( maploc == 0 ) {
+        // not written to, need to allocate it
+        maploc = partitioner_scan_free_block(io);
+        if ( maploc == 0 ) {
+            fprintf(stderr, "[partitioner] write failed, out of space!\n");
+            return false;
+        }
+
+        if ( !partitioner_block_set_maploc(io, which+io->mapper_partition_offset, maploc) )
+            return false;
+
+        if ( !partitioner_mark_block_as(io, maploc, true) )
+            return false;
+    }
+
+    return io->base->write_block(io->base, maploc, from);
+}
+
+static void part_close(struct bdev *dev) {
+    struct part_io *io = dev->m;
+    free(io->map_block);
+    free(io->bitmap_block);
+    free(io);
+    free(dev->generic_block_buffer);
+    free(dev);
+}
+
+static void part_clear_caches(struct bdev *dev) {
+    struct part_io *io = dev->m;
+    io->bitmap_block_which = 0;
+    io->map_block_which    = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// constructor
+
 struct bdev *partitioner_open(struct bdev *dev, int partition) {
     if ( dev->block_size < 512 ) {
         fprintf(stderr, "[partitioner] can't open a device with a block size less than 512 bytes");
         return NULL;
     }
 
-    if ( partition < 0 || partition > 62 ) {
+    if ( partition < 0 || partition > MAX_PARTITION_NUMBER ) {
         fprintf(stderr, "[partitioner] bad partition number: %d\n", partition);
         return false;
     }
 
-    fprintf(stderr, "[partitioner] partitioner_open not implemented\n");
+    struct bdev *mydev;
+    if ( (mydev = malloc(sizeof(struct bdev))) == NULL )
+        err(1, "Couldn't allocate space for partitioner bdev");
+    if ( (mydev->m = malloc(sizeof(struct part_io))) == NULL )
+        err(1, "Couldn't allocate space for partitioner part_io");
+    struct part_io *io = mydev->m;
+
+    if ( (io->bitmap_block = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for partitioner part_io:bitmap_block");
+    if ( (io->map_block = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for partitioner part_io:map_block");
+    io->bitmap_block_which = 0;
+    io->map_block_which    = 0;
+
+    io->base = dev;
+
+    if ( !partitioner_setup_io(io) )
+        goto ERR;
+
+    mydev->block_size = dev->block_size;
+
+    mydev->block_count = partitioner_get_part_size(io, partition);
+    if ( mydev->block_count == 0 ) {
+        fprintf(stderr, "[partitioner] partition %d has not been defined in that device\n", partition);
+        goto ERR;
+    }
+    io->open_partition = partition;
+    io->mapper_partition_offset = partitioner_get_partition_offset(io, partition);
+
+    mydev->read_block   = part_read_block;
+    mydev->write_block  = part_write_block;
+    mydev->close        = part_close;
+    mydev->clear_caches = part_clear_caches;
+    mydev->flush        = NULL;
+
+    if ( (mydev->generic_block_buffer = malloc(dev->block_size)) == NULL )
+        err(1, "Couldn't allocate space for partitioner dev:generic_block_buffer");
+    mydev->read_bytes = generic_read_bytes;
+    mydev->write_bytes = generic_write_bytes;
+
+    return mydev;
+
+ERR:
+    free(io->map_block);
+    free(io->bitmap_block);
+    free(io);
+    free(mydev);
+
     return NULL;
 }
 
