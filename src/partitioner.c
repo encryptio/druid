@@ -257,7 +257,7 @@ static bool partitioner_block_set_maploc(struct part_io *io, uint64_t which, uin
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// public interface
+// public class methods
 
 bool partitioner_initialize(struct bdev *dev) {
     if ( dev->block_size < 512 ) {
@@ -276,7 +276,7 @@ bool partitioner_initialize(struct bdev *dev) {
     memcpy(header, PARTITION_MAGIC, 8);
     pack_be64(dev->block_count, header+8);
     pack_be64(dev->block_size, header+16);
-    pack_be64(1024, header+PARTITION_SIZE_OFFSET); // one partition, 1024 blocks
+    pack_be64(10000ULL, header+PARTITION_SIZE_OFFSET); // one partition, 10000 blocks
 
     bool ret = true;
     if ( !dev->write_block(dev, 0, header) ) {
