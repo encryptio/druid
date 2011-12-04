@@ -278,7 +278,11 @@ bool partitioner_initialize(struct bdev *dev) {
     pack_be64(dev->block_size, header+16);
     pack_be64(1024, header+PARTITION_SIZE_OFFSET); // one partition, 1024 blocks
 
-    bool ret = dev->write_block(dev, 0, header);
+    bool ret = true;
+    if ( !dev->write_block(dev, 0, header) ) {
+        ret = false;
+        goto END;
+    }
 
     // XXX: what if the bitmap area is unreadable at the moment?
     if ( !partitioner_setup_io(&io) ) {
