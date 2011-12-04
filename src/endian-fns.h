@@ -1,5 +1,5 @@
-#ifndef __ENDIAN_H__
-#define __ENDIAN_H__
+#ifndef __ENDIAN_FNS_H__
+#define __ENDIAN_FNS_H__
 
 #include <inttypes.h>
 

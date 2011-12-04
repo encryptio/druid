@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <err.h>
 
-#include "endian.h"
+#include "endian-fns.h"
 #include "crc.h"
 
 /*

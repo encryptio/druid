@@ -1,6 +1,6 @@
 #include "nbd.h"
 
-#include "endian.h"
+#include "endian-fns.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
