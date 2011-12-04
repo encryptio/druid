@@ -109,13 +109,13 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
         err(1, "Couldn't allocate space for bdev :: mem_io");
     struct mem_io *io = dev->m;
 
-    dev->read_bytes = generic_read_bytes;
-    dev->write_bytes = generic_write_bytes;
-    dev->read_block = mem_read_block;
-    dev->write_block = mem_write_block;
-    dev->close = mem_mmap_close;
+    dev->read_bytes   = generic_read_bytes;
+    dev->write_bytes  = generic_write_bytes;
+    dev->read_block   = mem_read_block;
+    dev->write_block  = mem_write_block;
+    dev->close        = mem_mmap_close;
     dev->clear_caches = mem_mmap_clear_caches;
-    dev->flush = mem_mmap_flush;
+    dev->flush        = mem_mmap_flush;
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");
