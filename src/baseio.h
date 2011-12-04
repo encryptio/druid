@@ -7,5 +7,6 @@
 
 struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks);
 struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset);
+struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset);
 
 #endif

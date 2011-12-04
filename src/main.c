@@ -16,7 +16,7 @@ int main(void) {
     if ( ftruncate(fd, 1024*1024*1024) ) // 1 GiB
         err(1, "Couldn't ftruncate data-store");
 
-    struct bdev *base = bio_create_mmap(1024, fd, 1024*1024, 0);
+    struct bdev *base = bio_create_posixfd(1024, fd, 1024*1024, 0);
     assert(base);
 
     struct bdev *v = verify_create(base);
