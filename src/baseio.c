@@ -125,7 +125,7 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
 
     io->mmaplen = block_size * blocks;
 
-    if ( (io->base = mmap(NULL, block_size * blocks, PROT_READ|PROT_WRITE, 0, fd, offset)) == MAP_FAILED ) {
+    if ( (io->base = mmap(NULL, block_size * blocks, PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset)) == MAP_FAILED ) {
         fprintf(stderr, "Couldn't mmap device memory (%llu blocks of %llu bytes each: %s\n", (unsigned long long) block_size, (unsigned long long) blocks, strerror(errno));
         goto ERROR;
     }
