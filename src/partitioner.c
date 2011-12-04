@@ -371,10 +371,16 @@ static void part_close(struct bdev *dev) {
     free(dev);
 }
 
+static void part_flush(struct bdev *dev) {
+    struct part_io *io = dev->m;
+    io->base->flush(io->base);
+}
+
 static void part_clear_caches(struct bdev *dev) {
     struct part_io *io = dev->m;
     io->bitmap_block_which = 0;
     io->map_block_which    = 0;
+    io->base->clear_caches(io->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +430,7 @@ struct bdev *partitioner_open(struct bdev *dev, int partition) {
     mydev->write_block  = part_write_block;
     mydev->close        = part_close;
     mydev->clear_caches = part_clear_caches;
-    mydev->flush        = NULL;
+    mydev->flush        = part_flush;
 
     if ( (mydev->generic_block_buffer = malloc(dev->block_size)) == NULL )
         err(1, "Couldn't allocate space for partitioner dev:generic_block_buffer");

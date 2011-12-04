@@ -71,11 +71,11 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
 
     dev->read_bytes   = generic_read_bytes;
     dev->write_bytes  = generic_write_bytes;
-    dev->read_block = mem_read_block;
-    dev->write_block = mem_write_block;
-    dev->close = mem_malloc_close;
-    dev->clear_caches = NULL;
-    dev->flush = NULL;
+    dev->read_block   = mem_read_block;
+    dev->write_block  = mem_write_block;
+    dev->close        = mem_malloc_close;
+    dev->clear_caches = generic_clear_caches;
+    dev->flush        = generic_flush;
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");

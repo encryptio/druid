@@ -110,9 +110,15 @@ static void verify_close(struct bdev *self) {
     free(self);
 }
 
+static void verify_flush(struct dev *self) {
+    struct verify_io *io = self->m;
+    io->base->flush(io->base);
+}
+
 static void verify_clear_caches(struct bdev *self) {
     struct verify_io *io = self->m;
     io->which_hash_block = -1; // overflow
+    io->base->clear_caches(io->base);
 }
 
 struct bdev *verify_create(struct bdev *base) {
@@ -144,7 +150,7 @@ struct bdev *verify_create(struct bdev *base) {
     dev->read_block   = verify_read_block;
     dev->write_block  = verify_write_block;
     dev->close        = verify_close;
-    dev->flush        = NULL;
+    dev->flush        = verify_flush;
     dev->clear_caches = verify_clear_caches;
 
     if ( (dev->generic_block_buffer = malloc(dev->block_size)) == NULL )

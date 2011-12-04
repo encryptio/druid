@@ -70,8 +70,8 @@ void test_corruption(struct bdev *dev, struct bdev *basis) {
     test( dev->write_block(dev, 1, block) );
     test( dev->write_block(dev, 2, block) );
 
-    if ( dev->clear_caches ) dev->clear_caches(dev);
-    if ( dev->flush        ) dev->flush(dev);
+    dev->clear_caches(dev);
+    dev->flush(dev);
 
     // read block 1-3 in basis (0-2 on dev)
     test( dev->read_block(dev, 0, block) );
@@ -83,7 +83,7 @@ void test_corruption(struct bdev *dev, struct bdev *basis) {
     block[0] = block[0] ^ 0x40;
     test( basis->write_block(basis, 1, block) );
 
-    if ( dev->clear_caches ) dev->clear_caches(dev);
+    dev->clear_caches(dev);
 
     // and fail to read it again
     test( !dev->read_block(dev, 0, block) );
@@ -98,7 +98,7 @@ void test_corruption(struct bdev *dev, struct bdev *basis) {
             block[i] = block[i] ^ 0x01;
     test( basis->write_block(basis, 0, block) );
 
-    if ( dev->clear_caches ) dev->clear_caches(dev);
+    dev->clear_caches(dev);
 
     // fail to read blocks 1-3 in basis (0-2 on dev)
     test( !dev->read_block(dev, 0, block) );

@@ -92,3 +92,13 @@ bool generic_write_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_
     return true; // len == 0
 }
 
+void generic_flush(struct bdev *self) {
+    // do nothing
+    return;
+}
+
+void generic_clear_caches(struct bdev *self) {
+    // do nothing
+    return;
+}
+
