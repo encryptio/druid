@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 
     char suite_name[128];
 
-    for (uint64_t bs = 1; bs <= 131072; bs *= 2)
+    for (uint64_t bs = 1; bs <= 8192; bs *= 2)
         for (uint64_t blocks = 4; blocks <= 16; blocks *= 2) {
             snprintf(suite_name, 128, "bio ram bs=%d ct=%d", (int)bs, (int)blocks);
             suite(suite_name);
@@ -111,6 +111,46 @@ int main(int argc, char **argv) {
                 test_byte_interface(dev);
                 dev->close(dev);
             }
+
+            //////////////////
+
+            snprintf(suite_name, 128, "bio mmap bs=%d ct=%d", (int)bs, (int)blocks);
+            suite(suite_name);
+
+            int fd = open("/tmp/druid-test-datastore", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+            if ( fd == -1 )
+                err(1, "Couldn't open /tmp/druid-test-datastore");
+
+            if ( unlink("/tmp/druid-test-datastore") )
+                err(1, "Couldn't unlink /tmp/druid-test-datastore");
+
+            if ( ftruncate(fd, bs*blocks) )
+                err(1, "Couldn't ftruncate /tmp/druid-test-datastore");
+
+            dev = bio_create_mmap(bs, fd, blocks, 0);
+
+            test(dev != NULL);
+            if ( dev ) {
+                test_consistency_bdev(dev);
+                test_byte_interface(dev);
+                dev->close(dev);
+            }
+
+            //////////////////
+
+            snprintf(suite_name, 128, "bio posixfd bs=%d ct=%d", (int)bs, (int)blocks);
+            suite(suite_name);
+
+            dev = bio_create_posixfd(bs, fd, blocks, 0);
+
+            test(dev != NULL);
+            if ( dev ) {
+                test_consistency_bdev(dev);
+                test_byte_interface(dev);
+                dev->close(dev);
+            }
+
+            close(fd);
         }
 
     test_exit();
