@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <err.h>
+#include <assert.h>
 
 #include "bdev.h"
 #include "endian-fns.h"
@@ -324,7 +325,10 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_siz
     }
 
     struct bdev *partitioner = partitioner_open(dev, -1);
+    if ( !partitioner ) return false;
+
     struct part_io *io = partitioner->m;
+    assert(io != NULL);
 
     uint8_t *blockbuf, *blockbuf2;
     if ( (blockbuf = malloc(dev->block_size)) == NULL )
@@ -453,6 +457,8 @@ BADQUIT:
 // object methods
 
 static bool part_read_block(struct bdev *dev, uint64_t which, uint8_t *into) {
+    assert(which < dev->block_count);
+
     struct part_io *io = dev->m;
     uint64_t maploc = partitioner_block_maploc(io, which+io->mapper_partition_offset);
     if ( maploc == 1 ) return false;
@@ -467,6 +473,8 @@ static bool part_read_block(struct bdev *dev, uint64_t which, uint8_t *into) {
 }
 
 static bool part_write_block(struct bdev *dev, uint64_t which, uint8_t *from) {
+    assert(which < dev->block_count);
+
     struct part_io *io = dev->m;
     uint64_t maploc = partitioner_block_maploc(io, which+io->mapper_partition_offset);
     if ( maploc == 1 ) return false;
