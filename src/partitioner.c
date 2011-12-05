@@ -394,16 +394,20 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_siz
         for (int i = 0; i < partition; i++)
             start_shift_at += partitioner_get_part_size(io, i);
 
+        start_shift_at += old_size;
+
         uint64_t end_shift_at = io->mapped_total_size;
         fprintf(stderr, "shift_at=%llu..%llu\n", start_shift_at, end_shift_at);
 
         // TODO: optimize, this is really slow
         if ( end_shift_at > 0 ) {
             for (uint64_t i = end_shift_at-1; i >= start_shift_at; i--) {
-                fprintf(stderr, "shifting block %llu\n", i);
+                //assert(i != (uint64_t)(-1));
+                //fprintf(stderr, "shifting block %llu\n", i);
                 uint64_t blk = partitioner_block_maploc(io, i);
                 if ( blk == 1 ) goto ERR;
                 partitioner_block_set_maploc(io, i+map_shift, blk);
+                if ( i == start_shift_at ) break; // wtf overflow
             }
         }
 

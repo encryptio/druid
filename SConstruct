@@ -31,6 +31,7 @@ env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
 env.Object( 'obj/tests/baseio.o', 'src/tests/baseio.c' )
 env.Object( 'obj/tests/verify.o', 'src/tests/verify.c' )
 env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
+env.Object( 'obj/tests/partitioner.o', 'src/tests/partitioner.c' )
 
 # final programs
 
@@ -49,4 +50,7 @@ env.Command(".test.baseio.passed", 'prog/tests/baseio', runTest);
 
 env.Program( 'prog/tests/verify', ['obj/verify.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/tests/test.o', 'obj/tests/verify.o', 'obj/crc.o'] )
 env.Command(".test.verify.passed", 'prog/tests/verify', runTest);
+
+env.Program( 'prog/tests/partitioner', ['obj/bdev.o', 'obj/baseio.o', 'obj/partitioner.o', 'obj/tests/test.o', 'obj/tests/partitioner.o'] )
+env.Command(".test.partitioner.passed", 'prog/tests/partitioner', runTest);
 
