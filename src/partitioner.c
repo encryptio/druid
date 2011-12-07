@@ -8,6 +8,7 @@
 
 #include "bdev.h"
 #include "endian-fns.h"
+#include "bitvector.h"
 
 /* 
  *  disk format:
@@ -38,35 +39,6 @@
  *      repeated:
  *          uint64_t physical block location, or 0 if unmapped
  */
-
-
-////////////////////////////////////////////////////////////////////////////////
-// bit vector manipulation routines
-
-static inline void bit_set(uint8_t *set, uint64_t which) {
-    uint64_t byte = which / 8;
-    uint8_t bit = 1 << (which % 8);
-    set[byte] |= bit;
-}
-
-static inline bool bit_get(uint8_t *set, uint64_t which) {
-    uint64_t byte = which / 8;
-    uint8_t bit = 1 << (which % 8);
-    return (set[byte] & bit) ? true : false;
-}
-
-static inline void bit_clear(uint8_t *set, uint64_t which) {
-    uint64_t byte = which / 8;
-    uint8_t bit = 1 << (which % 8);
-    set[byte] &= ~bit;
-}
-
-static inline uint32_t bit_count_in_u32(uint32_t v) {
-    // from http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    v = v - ((v >> 1) & 0x55555555);
-    v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-    return ((v + ((v >> 4) & 0xF0F0F0F0)) * 0x10101010) >> 24;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // part_io and related macros for the on-disk format
