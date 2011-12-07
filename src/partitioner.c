@@ -9,6 +9,37 @@
 #include "bdev.h"
 #include "endian-fns.h"
 
+/* 
+ *  disk format:
+ *      header block
+ *      usage bitmap
+ *      mapping blocks
+ *      data blocks
+ *
+ *  the partitions are laid out contiguously on the mapping blocks,
+ *  in the order they are defined in the header block.
+ *
+ *  the maximum number of partitions is 61.
+ *
+ *  the last mapping block is zero-padded.
+ *
+ *  header block (512B):
+ *      magic number "PART0000"
+ *      uint64_t number of blocks in device
+ *      uint64_t block size
+ *      repeated:
+ *          uint64_t number of blocks in this partition (0 if no partition defined)
+ *
+ *  usage bitmap:
+ *      packed bits, each one representing a physical block.
+ *      1 if used, 0 if free.
+ *
+ *  mapping blocks:
+ *      repeated:
+ *          uint64_t physical block location, or 0 if unmapped
+ */
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // bit vector manipulation routines
 
@@ -413,7 +444,7 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_siz
 
         fprintf(stderr, "[partitioner] clearing new mapping\n");
 
-        // clear the mappings that are already there
+        // clear the mappings that have been opened up for use by the partition
         for (uint64_t i = start_shift_at; i < start_shift_at+map_shift; i++)
             partitioner_block_set_maploc(io, i, 0);
 
