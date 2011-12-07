@@ -394,7 +394,7 @@ bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_siz
                 uint64_t newloc = partitioner_scan_free_block(io);
                 if ( maploc == 0 ) {
                     fprintf(stderr, "[partitioner] remap failed, out of space!\n");
-                    goto ERR;
+                    goto OKERR;
                 }
 
                 fprintf(stderr, "[partitioner] remapping %llu -> %llu\n",
