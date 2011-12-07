@@ -39,7 +39,7 @@ env.Object( 'obj/tests/encrypt.o', 'src/tests/encrypt.c' )
 
 # final programs
 
-env.Program( 'prog/druid', ['obj/main.o', 'obj/nbd.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/verify.o', 'obj/partitioner.o', 'obj/crc.o'] )
+env.Program( 'prog/druid', ['obj/main.o', 'obj/nbd.o', 'obj/bdev.o', 'obj/baseio.o', 'obj/verify.o', 'obj/partitioner.o', 'obj/crc.o', 'obj/encrypt.o'] )
 
 # tests
 

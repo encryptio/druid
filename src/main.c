@@ -2,6 +2,7 @@
 #include "baseio.h"
 #include "verify.h"
 #include "partitioner.h"
+#include "encrypt.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -16,18 +17,14 @@ int main(void) {
     if ( ftruncate(fd, 1024*1024*1024) ) // 1 GiB
         err(1, "Couldn't ftruncate data-store");
 
-    struct bdev *base = bio_create_posixfd(1024, fd, 1024*1024, 0);
+    struct bdev *base = bio_create_mmap(1024, fd, 1024*1024, 0);
     assert(base);
 
-    /*
-    struct bdev *v = verify_create(base);
-    assert(v);
-    */
+    char *key = "hellisotherpeople";
 
-    partitioner_initialize(base);
-    partitioner_set_part_size(base, 3, 10000);
-    struct bdev *p = partitioner_open(base, 3);
-    assert(p);
+    encrypt_create(base, (uint8_t*)key, 17);
+
+    struct bdev *p = encrypt_open(base, (uint8_t*)key, 17);
 
     struct nbd_server *nbd = nbd_create(1234, p);
     assert(nbd);
