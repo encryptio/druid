@@ -28,6 +28,7 @@ env.Object( 'obj/partitioner.o', 'src/partitioner.c' )
 env.Object( 'obj/encrypt.o', 'src/encrypt.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
+env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
 
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
