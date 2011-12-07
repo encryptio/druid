@@ -34,6 +34,8 @@
  *
  * TODO: implement XTS cipher mode and make it the default. ofb has a bad
  * leak when used for changing data given the same iv.
+ *
+ * TODO: add key salting
  */
 
 struct enc_io {
