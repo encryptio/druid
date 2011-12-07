@@ -28,6 +28,9 @@
  * start. that is, the second block in the base device which represents
  * the first block of encrypted data has blockindex=0. blockindex is also
  * always big-endian when used to create an iv.
+ *
+ * TODO: implement XTS cipher mode and make it the default. ofb has a bad
+ * leak when used for changing data given the same iv.
  */
 
 struct enc_io {
