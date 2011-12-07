@@ -1,6 +1,8 @@
 import os
 env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc -g -D_GNU_SOURCE')
 
+env.ParseConfig('pkg-config --cflags --libs openssl')
+
 def runTest(env,target,source):
     import subprocess
     app = str(source[0].abspath)
@@ -23,6 +25,7 @@ env.Object( 'obj/nbd.o', 'src/nbd.c' )
 env.Object( 'obj/baseio.o', 'src/baseio.c' )
 env.Object( 'obj/verify.o', 'src/verify.c' )
 env.Object( 'obj/partitioner.o', 'src/partitioner.c' )
+env.Object( 'obj/encrypt.o', 'src/encrypt.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 
@@ -32,6 +35,7 @@ env.Object( 'obj/tests/baseio.o', 'src/tests/baseio.c' )
 env.Object( 'obj/tests/verify.o', 'src/tests/verify.c' )
 env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 env.Object( 'obj/tests/partitioner.o', 'src/tests/partitioner.c' )
+env.Object( 'obj/tests/encrypt.o', 'src/tests/encrypt.c' )
 
 # final programs
 
@@ -53,4 +57,7 @@ env.Command(".test.verify.passed", 'prog/tests/verify', runTest);
 
 env.Program( 'prog/tests/partitioner', ['obj/bdev.o', 'obj/baseio.o', 'obj/partitioner.o', 'obj/tests/test.o', 'obj/tests/partitioner.o'] )
 env.Command(".test.partitioner.passed", 'prog/tests/partitioner', runTest);
+
+env.Program( 'prog/tests/encrypt', ['obj/bdev.o', 'obj/baseio.o', 'obj/encrypt.o', 'obj/tests/test.o', 'obj/tests/encrypt.o'] )
+env.Command(".test.encrypt.passed", 'prog/tests/encrypt', runTest);
 
