@@ -70,7 +70,7 @@ static void strengthen_key(uint8_t *key, int keylen, uint8_t *out) {
         MD5(out, 56, hash);
 
         for (int j = i % 56, ct = 0;
-                ct < 20;
+                ct < 16;
                 j = (j+1) % 56, ct++)
             out[j] ^= hash[ct];
     }
