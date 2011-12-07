@@ -19,7 +19,7 @@
  * header block:
  *     magic number "ENCR0000"
  *     uint32_t cipher to be used
- *         0 -> blowfish in cbc mode, with iv=blockindex^baseiv
+ *         0 -> blowfish in ofb64 mode, with iv=blockindex^baseiv
  *     if blowfish:
  *         8-bytes key verification number
  *         8-bytes baseiv, encrypted in ecb mode
@@ -78,7 +78,7 @@ bool encrypt_create(struct bdev *dev, uint8_t *key, int keylen) {
     memset(block, 0, dev->block_size);
 
     memcpy(block, MAGIC, 8);
-    pack_be32(0, block+8); // blowfish CBC mode
+    pack_be32(0, block+8); // blowfish ofb64 mode
 
     uint8_t kv[8];
     make_key_verification(&bf, kv);
@@ -112,7 +112,8 @@ static bool encrypt_read_block(struct bdev *self, uint64_t which, uint8_t *into)
     for (int i = 0; i < 8; i++)
         iv[i] ^= io->baseiv[i];
 
-    BF_cbc_encrypt(io->cryptobuffer, into, self->block_size, &(io->bf), iv, BF_DECRYPT);
+    int num = 0;
+    BF_ofb64_encrypt(io->cryptobuffer, into, self->block_size, &(io->bf), iv, &num);
 
     return true;
 }
@@ -128,7 +129,8 @@ static bool encrypt_write_block(struct bdev *self, uint64_t which, uint8_t *from
     for (int i = 0; i < 8; i++)
         iv[i] ^= io->baseiv[i];
 
-    BF_cbc_encrypt(from, io->cryptobuffer, self->block_size, &(io->bf), iv, BF_ENCRYPT);
+    int num = 0;
+    BF_ofb64_encrypt(from, io->cryptobuffer, self->block_size, &(io->bf), iv, &num);
 
     return io->base->write_block(io->base, which+1, io->cryptobuffer);
 }
