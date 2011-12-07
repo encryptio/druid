@@ -10,6 +10,8 @@
 
 // using BF_* instead of EVP_* because we need to change the IV quickly
 #include <openssl/blowfish.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #define MAGIC "ENCR0000"
 
@@ -18,8 +20,9 @@
  *
  * header block:
  *     magic number "ENCR0000"
- *     uint32_t cipher to be used
- *         0 -> blowfish in ofb64 mode, with iv=blockindex^baseiv
+ *     uint32_t cipher and strengthening to be used
+ *         0 -> blowfish in ofb64 mode, with iv=blockindex^baseiv,
+ *              strengthening by iterated sha1 and md5 xoring
  *     if blowfish:
  *         8-bytes key verification number
  *         8-bytes baseiv, encrypted in ecb mode
@@ -39,6 +42,37 @@ struct enc_io {
     BF_KEY bf;
     uint8_t *cryptobuffer;
 };
+
+// out is a pointer to a 56-byte chunk of memory
+static void strengthen_key(uint8_t *key, int keylen, uint8_t *out) {
+    assert(keylen <= 56);
+
+    // zero pad into *out
+    memset(out, 0, 56);
+    memcpy(out, key, keylen);
+
+    uint8_t hash[20];
+    for (int i = 0; i < 100000; i++) {
+        // add the sha1 hash to the out array by xor,
+        // shifting its location on each iteration
+
+        SHA1(out, 56, hash);
+
+        for (int j = i % 56, ct = 0;
+                ct < 20;
+                j = (j+1) % 56, ct++)
+            out[j] ^= hash[ct];
+
+        // same for MD5
+
+        MD5(out, 56, hash);
+
+        for (int j = i % 56, ct = 0;
+                ct < 20;
+                j = (j+1) % 56, ct++)
+            out[j] ^= hash[ct];
+    }
+}
 
 static void make_key_verification(BF_KEY *bf, uint8_t *into) {
     uint8_t out[8], in[8];
@@ -64,7 +98,9 @@ bool encrypt_create(struct bdev *dev, uint8_t *key, int keylen) {
     // encrypted random baseiv
 
     BF_KEY bf;
-    BF_set_key(&bf, keylen, key);
+    uint8_t skey[56];
+    strengthen_key(key, keylen, skey);
+    BF_set_key(&bf, 56, skey);
 
     uint8_t baseiv[8], baseiv_encrypted[8];
     for (int i = 0; i < 8; i++)
@@ -188,7 +224,9 @@ struct bdev *encrypt_open(struct bdev *base, uint8_t *key, int keylen) {
 
     io->base = base;
 
-    BF_set_key(&(io->bf), keylen, key);
+    uint8_t skey[56];
+    strengthen_key(key, keylen, skey);
+    BF_set_key(&(io->bf), 56, skey);
 
     if ( !base->read_block(base, 0, t) )
         goto BAD_END;
