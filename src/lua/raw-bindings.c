@@ -120,7 +120,7 @@ static int bind_concat_open(lua_State *L) {
 ////////////////////////////////////////////////////////////////////////////////
 #include "layers/encrypt.h"
 
-int bind_encrypt_create(lua_State *L) {
+static int bind_encrypt_create(lua_State *L) {
     require_exactly(L, 2);
 
     if ( !lua_islightuserdata(L, 1) )
@@ -139,7 +139,7 @@ int bind_encrypt_create(lua_State *L) {
     return 1;
 }
 
-int bind_encrypt_open(lua_State *L) {
+static int bind_encrypt_open(lua_State *L) {
     require_exactly(L, 2);
 
     if ( !lua_islightuserdata(L, 1) )
@@ -162,7 +162,7 @@ int bind_encrypt_open(lua_State *L) {
 ////////////////////////////////////////////////////////////////////////////////
 #include "layers/nbd.h"
 
-int bind_nbd_create(lua_State *L) {
+static int bind_nbd_create(lua_State *L) {
     require_exactly(L, 2);
 
     if ( !lua_islightuserdata(L, 2) )
@@ -183,7 +183,7 @@ int bind_nbd_create(lua_State *L) {
     return 1;
 }
 
-int bind_nbd_listenloop(lua_State *L) {
+static int bind_nbd_listenloop(lua_State *L) {
     require_exactly(L, 1);
 
     if ( !lua_islightuserdata(L, 1) )
@@ -202,7 +202,7 @@ int bind_nbd_listenloop(lua_State *L) {
 ////////////////////////////////////////////////////////////////////////////////
 #include "layers/slice.h"
 
-int bind_slice_open(lua_State *L) {
+static int bind_slice_open(lua_State *L) {
     require_exactly(L, 3);
 
     if ( !lua_islightuserdata(L, 1) )
@@ -224,7 +224,7 @@ int bind_slice_open(lua_State *L) {
 ////////////////////////////////////////////////////////////////////////////////
 #include "layers/stripe.h"
 
-int bind_stripe_open(lua_State *L) {
+static int bind_stripe_open(lua_State *L) {
     require_atleast(L, 1);
 
     // TODO: allow argument to be a table of the devices
@@ -257,7 +257,7 @@ int bind_stripe_open(lua_State *L) {
 ////////////////////////////////////////////////////////////////////////////////
 #include "layers/verify.h"
 
-int bind_verify_create(lua_State *L) {
+static int bind_verify_create(lua_State *L) {
     require_exactly(L, 1);
 
     if ( !lua_islightuserdata(L, 1) )
