@@ -1,5 +1,5 @@
-#ifndef __SLICE_H__
-#define __SLICE_H__
+#ifndef __LAYERS_SLICE_H__
+#define __LAYERS_SLICE_H__
 
 #include "bdev.h"
 
