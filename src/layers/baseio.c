@@ -57,7 +57,7 @@ static void mem_mmap_clear_caches(struct bdev *self) {
 
 static void mem_mmap_flush(struct bdev *self) {
     struct mem_io *io = self->m;
-    if ( msync(io->base, io->mmaplen, MS_SYNC) )
+    if ( msync(io->base, io->mmaplen, MS_ASYNC) )
         err(1, "Couldn't msync base in mem_mmap_flush");
 }
 
