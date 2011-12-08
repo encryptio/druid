@@ -91,9 +91,13 @@ static void concat_sync(struct bdev *self) {
 struct bdev *concat_open(struct bdev **devices, int count) {
     assert(count > 0);
 
+    /*
+     * unfortunately, this fails because the close method is mishandled
+
     // no need to concat a single device
     if ( count == 1 )
         return devices[0];
+    */
 
     // make sure all the block sizes are identical
     uint64_t block_size = devices[0]->block_size;
