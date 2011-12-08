@@ -16,10 +16,10 @@ static bool slice_read_bytes(struct bdev *self, uint64_t start, uint64_t len, ui
     return io->base->read_bytes(io->base, start + self->block_size*io->start, len, into);
 }
 
-static bool slice_write_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_t *into) {
+static bool slice_write_bytes(struct bdev *self, uint64_t start, uint64_t len, const uint8_t *from) {
     struct slice_io *io = self->m;
     assert(start+len <= io->len*self->block_size);
-    return io->base->write_bytes(io->base, start + self->block_size*io->start, len, into);
+    return io->base->write_bytes(io->base, start + self->block_size*io->start, len, from);
 }
 
 static bool slice_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
@@ -28,7 +28,7 @@ static bool slice_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
     return io->base->read_block(io->base, which+io->start, into);
 }
 
-static bool slice_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool slice_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     struct slice_io *io = self->m;
     assert(which < io->len);
     return io->base->write_block(io->base, which+io->start, from);

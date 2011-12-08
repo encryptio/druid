@@ -159,7 +159,7 @@ static bool encrypt_read_block(struct bdev *self, uint64_t which, uint8_t *into)
     return true;
 }
 
-static bool encrypt_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool encrypt_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     assert(which < self->block_count);
 
     // TODO: look into doing crypto in-place

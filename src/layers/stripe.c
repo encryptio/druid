@@ -23,7 +23,7 @@ static bool stripe_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
     return io->devices[device]->read_block(io->devices[device], block, into);
 }
 
-static bool stripe_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool stripe_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     struct stripe_io *io = self->m;
     assert(which < self->block_count);
 

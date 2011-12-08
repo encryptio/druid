@@ -87,7 +87,7 @@ static inline crc_t crc_finalize(crc_t crc)
  * Wrapper, added manually
  */
 
-static inline uint32_t calc_crc32(uint8_t *ram, uint64_t len) {
+static inline uint32_t calc_crc32(const uint8_t *ram, uint64_t len) {
     return crc_finalize(crc_update(crc_init(), ram, len));
 }
 

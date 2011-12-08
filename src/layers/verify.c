@@ -74,7 +74,7 @@ static bool verify_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
     return true;
 }
 
-static bool verify_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool verify_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     struct verify_io *io = self->m;
     assert(which < self->block_count);
 

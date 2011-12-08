@@ -49,7 +49,7 @@ bool generic_read_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_t
     return true; // len == 0
 }
 
-bool generic_write_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_t *from) {
+bool generic_write_bytes(struct bdev *self, uint64_t start, uint64_t len, const uint8_t *from) {
     if ( len == 0 ) return true;
 
     uint64_t start_block = start/self->block_size;

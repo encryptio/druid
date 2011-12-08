@@ -41,7 +41,7 @@ static bool concat_read_bytes(struct bdev *self, uint64_t start, uint64_t len, u
     return generic_read_bytes(self, start, len, into);
 }
 
-static bool concat_write_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_t *from) {
+static bool concat_write_bytes(struct bdev *self, uint64_t start, uint64_t len, const uint8_t *from) {
     // TODO: pass through the request if it falls in a single device
     return generic_write_bytes(self, start, len, from);
 }
@@ -53,7 +53,7 @@ static bool concat_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
     return io->devices[io->last]->read_block(io->devices[io->last], which-io->last_offset, into);
 }
 
-static bool concat_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool concat_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     struct concat_io *io = self->m;
     assert(which < self->block_count);
     assert(concat_find(io, which));

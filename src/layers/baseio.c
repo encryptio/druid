@@ -25,7 +25,7 @@ static bool mem_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
     return true;
 }
 
-static bool mem_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool mem_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     assert(which < self->block_count);
     struct mem_io *io = self->m;
     memcpy(io->base + which*self->block_size, from, self->block_size);
@@ -175,7 +175,7 @@ static bool fd_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
     return true;
 }
 
-static bool fd_write_block(struct bdev *self, uint64_t which, uint8_t *from) {
+static bool fd_write_block(struct bdev *self, uint64_t which, const uint8_t *from) {
     assert(which < self->block_count);
     struct fd_io *io = self->m;
     ssize_t ret = pwrite(io->fd, from, self->block_size, which*self->block_size+io->offset);
