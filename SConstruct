@@ -47,7 +47,13 @@ env.Object( 'obj/tests/slice.o', 'src/tests/slice.c' )
 
 # final programs
 
-env.Program( 'prog/druid', ['obj/lua/main.o', 'obj/bdev.o', 'obj/layers/baseio.o', 'obj/lua/raw-bindings.o'] )
+env.Program( 'prog/druid',
+    ['obj/lua/main.o',
+     'obj/lua/raw-bindings.o',
+
+     'obj/bdev.o',
+     'obj/layers/baseio.o',
+     'obj/layers/concat.o'] )
 
 # tests
 

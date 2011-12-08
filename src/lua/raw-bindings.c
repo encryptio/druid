@@ -1,5 +1,7 @@
 #include "lua/raw-bindings.h"
 
+#include <stdlib.h>
+#include <err.h>
 
 #include "lua.h"
 #include "lualib.h"
@@ -83,6 +85,37 @@ static int bind_bio_create_posixfd(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/concat.h"
+
+static int bind_concat_open(lua_State *L) {
+    require_atleast(L, 1);
+
+    // TODO: allow argument to be a table of the devices
+    
+    int count = lua_gettop(L);
+
+    struct bdev **devices;
+    if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
+        err(1, "Couldn't allocate space for devices list");
+
+    for (int i = 0; i < count; i++) {
+        if ( !lua_islightuserdata(L, i+1) ) {
+            free(devices);
+            return luaL_argerror(L, i+1, "not a light userdata");
+        }
+        devices[i] = lua_touserdata(L, i+1);
+    }
+
+    void *p = concat_open(devices, count);
+    if ( p ) lua_pushlightuserdata(L, p);
+    else     lua_pushnil(L);
+
+    free(devices);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -98,6 +131,7 @@ void bind_druidraw(lua_State *L) {
     BIND(bio_create_malloc);
     BIND(bio_create_mmap);
     BIND(bio_create_posixfd);
+    BIND(concat_open);
 
 #undef BIND
 
