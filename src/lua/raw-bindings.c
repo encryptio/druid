@@ -106,6 +106,8 @@ static int bind_concat_open(lua_State *L) {
         devices[i] = lua_touserdata(L, i+1);
     }
 
+    lua_pop(L, count);
+
     void *p = concat_open(devices, count);
     if ( p ) lua_pushlightuserdata(L, p);
     else     lua_pushnil(L);
