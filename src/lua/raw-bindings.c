@@ -222,6 +222,39 @@ int bind_slice_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/stripe.h"
+
+int bind_stripe_open(lua_State *L) {
+    require_atleast(L, 1);
+
+    // TODO: allow argument to be a table of the devices
+    
+    int count = lua_gettop(L);
+
+    struct bdev **devices;
+    if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
+        err(1, "Couldn't allocate space for devices list");
+
+    for (int i = 0; i < count; i++) {
+        if ( !lua_islightuserdata(L, i+1) ) {
+            free(devices);
+            return luaL_argerror(L, i+1, "not a light userdata");
+        }
+        devices[i] = lua_touserdata(L, i+1);
+    }
+
+    lua_pop(L, count);
+
+    void *p = stripe_open(devices, count);
+    if ( p ) lua_pushlightuserdata(L, p);
+    else     lua_pushnil(L);
+
+    free(devices);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -247,6 +280,8 @@ void bind_druidraw(lua_State *L) {
     BIND(nbd_listenloop);
 
     BIND(slice_open);
+
+    BIND(stripe_open);
 
 #undef BIND
 
