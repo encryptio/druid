@@ -1,5 +1,5 @@
-#ifndef __NBD_H__
-#define __NBD_H__
+#ifndef __LAYERS_NBD_H__
+#define __LAYERS_NBD_H__
 
 #include <inttypes.h>
 

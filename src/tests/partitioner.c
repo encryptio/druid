@@ -8,8 +8,8 @@
 #include <assert.h>
 
 #include "test.h"
-#include "baseio.h"
-#include "partitioner.h"
+#include "layers/baseio.h"
+#include "layers/partitioner.h"
 
 int main(int argc, char **argv) {
     srandom(time(NULL));

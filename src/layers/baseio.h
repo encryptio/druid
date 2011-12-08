@@ -1,5 +1,5 @@
-#ifndef __BASEIO_H__
-#define __BASEIO_H__
+#ifndef __LAYERS_BASEIO_H__
+#define __LAYERS_BASEIO_H__
 
 #include "bdev.h"
 #include <unistd.h> // for size_t

@@ -1,5 +1,3 @@
-
-
 // Modified pycrc output
 
 /**

@@ -1,4 +1,4 @@
-#include "verify.h"
+#include "layers/verify.h"
 
 #include <stdlib.h>
 #include <assert.h>

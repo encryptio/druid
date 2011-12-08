@@ -1,4 +1,4 @@
-#include "partitioner.h"
+#include "layers/partitioner.h"
 
 #include <stdio.h>
 #include <stdlib.h>

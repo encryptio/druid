@@ -8,8 +8,9 @@
 #include <assert.h>
 
 #include "test.h"
-#include "baseio.h"
-#include "verify.h" 
+#include "layers/baseio.h"
+#include "layers/verify.h" 
+
 void test_consistency_bdev_with_block(struct bdev *dev, uint8_t *basis, uint8_t *block) {
     for (int i = 0; i < dev->block_count; i++) {
         test(dev->write_block(dev, i, basis));

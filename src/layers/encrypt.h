@@ -1,5 +1,5 @@
-#ifndef __ENCRYPT_H__
-#define __ENCRYPT_H__
+#ifndef __LAYERS_ENCRYPT_H__
+#define __LAYERS_ENCRYPT_H__
 
 #include "bdev.h"
 

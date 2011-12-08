@@ -1,5 +1,5 @@
-#ifndef __VERIFY_H__
-#define __VERIFY_H__
+#ifndef __LAYERS_VERIFY_H__
+#define __LAYERS_VERIFY_H__
 
 #include "bdev.h"
 

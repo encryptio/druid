@@ -7,7 +7,7 @@
 #include <err.h>
 
 #include "test.h"
-#include "baseio.h"
+#include "layers/baseio.h"
 
 void test_consistency_bdev_with_block(struct bdev *dev, uint8_t *basis, uint8_t *block) {
     for (int i = 0; i < dev->block_count; i++) {

@@ -1,5 +1,5 @@
-#ifndef __PARTITIONER_H__
-#define __PARTITIONER_H__
+#ifndef __LAYERS_PARTITIONER_H__
+#define __LAYERS_PARTITIONER_H__
 
 #include "bdev.h"
 
