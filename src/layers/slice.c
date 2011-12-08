@@ -56,6 +56,10 @@ struct bdev *slice_open(struct bdev *base, uint64_t start, uint64_t len) {
         return NULL;
     }
 
+    // no need to slice the whole device
+    if ( start == 0 && len == base->block_count )
+        return base;
+
     struct bdev *dev;
     if ( (dev = malloc(sizeof(struct bdev))) == NULL )
         err(1, "Couldn't malloc space for slice:bdev");
