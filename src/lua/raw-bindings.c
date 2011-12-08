@@ -11,11 +11,11 @@ static inline void require_atleast(lua_State *L, int ct) {
     int got = lua_gettop(L);
     if ( got < ct ) {
         luaL_where(L, 1);
-        lua_pushstring(L, "Need more arguments (wanted ");
+        lua_pushliteral(L, "Need more arguments (wanted ");
         lua_pushnumber(L, ct);
-        lua_pushstring(L, ", got ");
+        lua_pushliteral(L, ", got ");
         lua_pushnumber(L, got);
-        lua_pushstring(L, ")");
+        lua_pushliteral(L, ")");
         lua_concat(L, 6);
         lua_error(L);
     }
@@ -25,11 +25,11 @@ static inline void require_exactly(lua_State *L, int ct) {
     int got = lua_gettop(L);
     if ( got != ct ) {
         luaL_where(L, 1);
-        lua_pushstring(L, "Wrong number of arguments (wanted ");
+        lua_pushliteral(L, "Wrong number of arguments (wanted ");
         lua_pushnumber(L, ct);
-        lua_pushstring(L, ", got ");
+        lua_pushliteral(L, ", got ");
         lua_pushnumber(L, got);
-        lua_pushstring(L, ")");
+        lua_pushliteral(L, ")");
         lua_concat(L, 6);
         lua_error(L);
     }
@@ -147,11 +147,11 @@ static int bind_bdev_write_block(lua_State *L) {
 
     if ( len != dev->block_size ) {
         luaL_where(L, 1);
-        lua_pushstring(L, "Wrong block size (got ");
+        lua_pushliteral(L, "Wrong block size (got ");
         lua_pushnumber(L, len);
-        lua_pushstring(L, " bytes, expected ");
+        lua_pushliteral(L, " bytes, expected ");
         lua_pushnumber(L, dev->block_size);
-        lua_pushstring(L, "bytes)");
+        lua_pushliteral(L, "bytes)");
         lua_concat(L, 6);
         lua_error(L);
     }
@@ -466,7 +466,7 @@ void bind_druidraw(lua_State *L) {
     int table = lua_gettop(L);
 
 #define BIND(name) do { \
-    lua_pushstring(L, #name); \
+    lua_pushliteral(L, #name); \
     lua_pushcfunction(L, bind_##name); \
     lua_settable(L, table); \
 } while (0)
