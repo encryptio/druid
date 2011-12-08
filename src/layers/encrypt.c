@@ -194,6 +194,11 @@ static void encrypt_flush(struct bdev *self) {
     io->base->flush(io->base);
 }
 
+static void encrypt_sync(struct bdev *self) {
+    struct enc_io *io = self->m;
+    io->base->sync(io->base);
+}
+
 struct bdev *encrypt_open(struct bdev *base, uint8_t *key, int keylen) {
     assert(base->block_size >= 28);
 
@@ -214,6 +219,7 @@ struct bdev *encrypt_open(struct bdev *base, uint8_t *key, int keylen) {
     dev->close = encrypt_close;
     dev->clear_caches = encrypt_clear_caches;
     dev->flush = encrypt_flush;
+    dev->sync  = encrypt_sync;
 
     dev->read_bytes = generic_read_bytes;
     dev->write_bytes = generic_write_bytes;

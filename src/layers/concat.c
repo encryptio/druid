@@ -80,6 +80,14 @@ static void concat_flush(struct bdev *self) {
         io->devices[i]->flush(io->devices[i]);
 }
 
+static void concat_sync(struct bdev *self) {
+    concat_flush(self);
+
+    struct concat_io *io = self->m;
+    for (int i = 0; i < io->count; i++)
+        io->devices[i]->sync(io->devices[i]);
+}
+
 struct bdev *concat_open(struct bdev **devices, int count) {
     assert(count > 0);
 
@@ -135,6 +143,7 @@ struct bdev *concat_open(struct bdev **devices, int count) {
     dev->close        = concat_close;
     dev->clear_caches = concat_clear_caches;
     dev->flush        = concat_flush;
+    dev->sync         = concat_sync;
 
     return dev;
     

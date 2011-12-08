@@ -49,6 +49,11 @@ static void slice_flush(struct bdev *self) {
     io->base->flush(io->base);
 }
 
+static void slice_sync(struct bdev *self) {
+    struct slice_io *io = self->m;
+    io->base->sync(io->base);
+}
+
 struct bdev *slice_open(struct bdev *base, uint64_t start, uint64_t len) {
     assert(len > 0);
     if ( base->block_count < start+len ) {
@@ -83,6 +88,7 @@ struct bdev *slice_open(struct bdev *base, uint64_t start, uint64_t len) {
     dev->close        = slice_close;
     dev->clear_caches = slice_clear_caches;
     dev->flush        = slice_flush;
+    dev->sync         = slice_sync;
 
     return dev;
 };

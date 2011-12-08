@@ -121,6 +121,11 @@ static void verify_clear_caches(struct bdev *self) {
     io->base->clear_caches(io->base);
 }
 
+static void verify_sync(struct bdev *self) {
+    struct verify_io *io = self->m;
+    io->base->sync(io->base);
+}
+
 struct bdev *verify_create(struct bdev *base) {
     struct bdev *dev;
 
@@ -151,6 +156,7 @@ struct bdev *verify_create(struct bdev *base) {
     dev->write_block  = verify_write_block;
     dev->close        = verify_close;
     dev->flush        = verify_flush;
+    dev->sync         = verify_sync;
     dev->clear_caches = verify_clear_caches;
 
     if ( (dev->generic_block_buffer = malloc(dev->block_size)) == NULL )

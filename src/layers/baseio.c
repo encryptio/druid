@@ -61,6 +61,12 @@ static void mem_mmap_flush(struct bdev *self) {
         err(1, "Couldn't msync base in mem_mmap_flush");
 }
 
+static void mem_mmap_sync(struct bdev *self) {
+    struct mem_io *io = self->m;
+    if ( msync(io->base, io->mmaplen, MS_SYNC) )
+        err(1, "Couldn't msync base in mem_mmap_sync");
+}
+
 struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     assert(block_size);
     assert(!(block_size & (block_size-1))); // is a power of two
@@ -80,6 +86,7 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->close        = mem_malloc_close;
     dev->clear_caches = generic_clear_caches;
     dev->flush        = generic_flush;
+    dev->sync         = generic_sync;
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");
@@ -120,6 +127,7 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     dev->close        = mem_mmap_close;
     dev->clear_caches = mem_mmap_clear_caches;
     dev->flush        = mem_mmap_flush;
+    dev->sync         = mem_mmap_sync;
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");
@@ -190,6 +198,12 @@ static void fd_close(struct bdev *self) {
     free(self);
 }
 
+static void fd_sync(struct bdev *self) {
+    struct fd_io *io = self->m;
+    if ( !fsync(io->fd) )
+        fprintf(stderr, "[baseio:fd] Couldn't fsync: %s\n", strerror(errno));
+}
+
 struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset) {
     assert(block_size);
     assert(!(block_size & (block_size-1))); // is a power of two
@@ -209,6 +223,7 @@ struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_
     dev->close        = fd_close;
     dev->clear_caches = generic_clear_caches;
     dev->flush        = generic_flush;
+    dev->sync         = fd_sync;
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");

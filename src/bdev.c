@@ -102,3 +102,8 @@ void generic_clear_caches(struct bdev *self) {
     return;
 }
 
+void generic_sync(struct bdev *self) {
+    // do nothing
+    return;
+}
+

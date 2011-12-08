@@ -17,6 +17,7 @@ struct bdev {
     void (*close       )(struct bdev *self);
     void (*clear_caches)(struct bdev *self);
     void (*flush       )(struct bdev *self);
+    void (*sync        )(struct bdev *self);
 
     uint8_t *generic_block_buffer;
 };
@@ -29,5 +30,6 @@ bool generic_write_bytes(struct bdev *self, uint64_t start, uint64_t len, uint8_
 
 void generic_clear_caches(struct bdev *self);
 void generic_flush(struct bdev *self);
+void generic_sync(struct bdev *self);
 
 #endif
