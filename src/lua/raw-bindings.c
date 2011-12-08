@@ -1,19 +1,43 @@
 #include "lua/raw-bindings.h"
 
-#include "layers/baseio.h"
 
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 
-////////////////////////////////////////////////////////////////////////////////
-// for layers/baseio.h
-
-static int bind_bio_create_malloc(lua_State *L) {
-    if ( lua_gettop(L) != 2 ) {
-        lua_pushstring(L, "Incorrect number of arguments");
+static inline void require_atleast(lua_State *L, int ct) {
+    int got = lua_gettop(L);
+    if ( got < ct ) {
+        luaL_where(L, 1);
+        lua_pushstring(L, "Need more arguments (wanted ");
+        lua_pushnumber(L, ct);
+        lua_pushstring(L, ", got ");
+        lua_pushnumber(L, got);
+        lua_pushstring(L, ")");
+        lua_concat(L, 6);
         lua_error(L);
     }
+}
+
+static inline void require_exactly(lua_State *L, int ct) {
+    int got = lua_gettop(L);
+    if ( got != ct ) {
+        luaL_where(L, 1);
+        lua_pushstring(L, "Wrong number of arguments (wanted ");
+        lua_pushnumber(L, ct);
+        lua_pushstring(L, ", got ");
+        lua_pushnumber(L, got);
+        lua_pushstring(L, ")");
+        lua_concat(L, 6);
+        lua_error(L);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+#include "layers/baseio.h"
+
+static int bind_bio_create_malloc(lua_State *L) {
+    require_exactly(L, 2);
 
     uint64_t block_size = luaL_checknumber(L, 1);
     size_t blocks       = luaL_checknumber(L, 2);
@@ -27,10 +51,7 @@ static int bind_bio_create_malloc(lua_State *L) {
 }
 
 static int bind_bio_create_mmap(lua_State *L) {
-    if ( lua_gettop(L) != 4 ) {
-        lua_pushstring(L, "Incorrect number of arguments");
-        lua_error(L);
-    }
+    require_exactly(L, 4);
 
     uint64_t block_size = luaL_checknumber(L, 1);
     int fd              = luaL_checknumber(L, 2);
@@ -46,10 +67,7 @@ static int bind_bio_create_mmap(lua_State *L) {
 }
 
 static int bind_bio_create_posixfd(lua_State *L) {
-    if ( lua_gettop(L) != 4 ) {
-        lua_pushstring(L, "Incorrect number of arguments");
-        lua_error(L);
-    }
+    require_exactly(L, 4);
 
     uint64_t block_size = luaL_checknumber(L, 1);
     int fd              = luaL_checknumber(L, 2);
@@ -85,4 +103,3 @@ void bind_druidraw(lua_State *L) {
 
     lua_setglobal(L, "druidraw");
 }
-
