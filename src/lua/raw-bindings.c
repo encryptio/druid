@@ -200,6 +200,28 @@ int bind_nbd_listenloop(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/slice.h"
+
+int bind_slice_open(lua_State *L) {
+    require_exactly(L, 3);
+
+    if ( !lua_islightuserdata(L, 1) )
+        return luaL_argerror(L, 1, "not a light userdata");
+
+    struct bdev *base = lua_touserdata(L, 1);
+    uint64_t start    = luaL_checknumber(L, 2);
+    uint64_t len      = luaL_checknumber(L, 3);
+    lua_pop(L, 3);
+
+    struct bdev *dev = slice_open(base, start, len);
+
+    if ( dev ) lua_pushlightuserdata(L, dev);
+    else       lua_pushnil(L);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -223,6 +245,8 @@ void bind_druidraw(lua_State *L) {
 
     BIND(nbd_create);
     BIND(nbd_listenloop);
+
+    BIND(slice_open);
 
 #undef BIND
 

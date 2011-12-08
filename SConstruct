@@ -55,7 +55,8 @@ env.Program( 'prog/druid',
      'obj/layers/baseio.o',
      'obj/layers/concat.o',
      'obj/layers/encrypt.o',
-     'obj/layers/nbd.o'] )
+     'obj/layers/nbd.o',
+     'obj/layers/slice.o'] )
 
 # tests
 
