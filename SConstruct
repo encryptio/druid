@@ -26,6 +26,7 @@ env.Object( 'obj/layers/baseio.o', 'src/layers/baseio.c' )
 env.Object( 'obj/layers/verify.o', 'src/layers/verify.c' )
 #env.Object( 'obj/layers/partitioner.o', 'src/layers/partitioner.c' )
 env.Object( 'obj/layers/encrypt.o', 'src/layers/encrypt.c' )
+env.Object( 'obj/layers/slice.o', 'src/layers/slice.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
@@ -37,6 +38,7 @@ env.Object( 'obj/tests/verify.o', 'src/tests/verify.c' )
 env.Object( 'obj/tests/test.o', 'src/tests/test.c' )
 #env.Object( 'obj/tests/partitioner.o', 'src/tests/partitioner.c' )
 env.Object( 'obj/tests/encrypt.o', 'src/tests/encrypt.c' )
+env.Object( 'obj/tests/slice.o', 'src/tests/slice.c' )
 
 # final programs
 
@@ -61,4 +63,7 @@ env.Command(".test.verify.passed", 'prog/tests/verify', runTest);
 
 env.Program( 'prog/tests/encrypt', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/encrypt.o', 'obj/tests/test.o', 'obj/tests/encrypt.o'] )
 env.Command(".test.encrypt.passed", 'prog/tests/encrypt', runTest);
+
+env.Program( 'prog/tests/slice', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/slice.o', 'obj/tests/test.o', 'obj/tests/slice.o'] )
+env.Command(".test.slice.passed", 'prog/tests/slice', runTest);
 
