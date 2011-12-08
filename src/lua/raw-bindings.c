@@ -116,6 +116,48 @@ static int bind_concat_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/encrypt.h"
+
+int bind_encrypt_create(lua_State *L) {
+    require_exactly(L, 2);
+
+    if ( !lua_islightuserdata(L, 1) )
+        return luaL_argerror(L, 1, "not a light userdata");
+
+    struct bdev *dev = lua_touserdata(L, 1);
+    size_t keylen;
+    const uint8_t *key = (const uint8_t *) luaL_checklstring(L, 2, &keylen);
+
+    bool ret = encrypt_create(dev, key, keylen);
+
+    lua_pop(L, 2); // here to make sure key is valid above
+
+    lua_pushboolean(L, ret);
+
+    return 1;
+}
+
+int bind_encrypt_open(lua_State *L) {
+    require_exactly(L, 2);
+
+    if ( !lua_islightuserdata(L, 1) )
+        return luaL_argerror(L, 1, "not a light userdata");
+
+    struct bdev *dev = lua_touserdata(L, 1);
+    size_t keylen;
+    const uint8_t *key = (const uint8_t *) luaL_checklstring(L, 2, &keylen);
+
+    struct bdev *ret = encrypt_open(dev, key, keylen);
+
+    lua_pop(L, 2);
+    
+    if ( ret ) lua_pushlightuserdata(L, ret);
+    else       lua_pushnil(L);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -131,7 +173,11 @@ void bind_druidraw(lua_State *L) {
     BIND(bio_create_malloc);
     BIND(bio_create_mmap);
     BIND(bio_create_posixfd);
+
     BIND(concat_open);
+
+    BIND(encrypt_create);
+    BIND(encrypt_open);
 
 #undef BIND
 

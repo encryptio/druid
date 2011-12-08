@@ -53,7 +53,8 @@ env.Program( 'prog/druid',
 
      'obj/bdev.o',
      'obj/layers/baseio.o',
-     'obj/layers/concat.o'] )
+     'obj/layers/concat.o',
+     'obj/layers/encrypt.o'] )
 
 # tests
 
