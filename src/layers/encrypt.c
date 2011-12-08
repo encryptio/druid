@@ -46,7 +46,7 @@ struct enc_io {
 };
 
 // out is a pointer to a 56-byte chunk of memory
-static void strengthen_key(uint8_t *key, int keylen, uint8_t *out) {
+static void strengthen_key(const uint8_t *key, int keylen, uint8_t *out) {
     assert(keylen <= 56);
 
     // zero pad into *out
@@ -93,7 +93,7 @@ static void make_key_verification(BF_KEY *bf, uint8_t *into) {
     }
 }
 
-bool encrypt_create(struct bdev *dev, uint8_t *key, int keylen) {
+bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen) {
     assert(dev->block_size >= 28);
 
     //////
@@ -199,7 +199,7 @@ static void encrypt_sync(struct bdev *self) {
     io->base->sync(io->base);
 }
 
-struct bdev *encrypt_open(struct bdev *base, uint8_t *key, int keylen) {
+struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
     assert(base->block_size >= 28);
 
     struct bdev *dev;

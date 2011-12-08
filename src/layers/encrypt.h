@@ -3,8 +3,8 @@
 
 #include "bdev.h"
 
-bool encrypt_create(struct bdev *dev, uint8_t *key, int keylen);
-struct bdev *encrypt_open(struct bdev *base, uint8_t *key, int keylen);
+bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen);
+struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen);
 
 #endif
 
