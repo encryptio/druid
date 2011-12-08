@@ -255,6 +255,25 @@ int bind_stripe_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/verify.h"
+
+int bind_verify_create(lua_State *L) {
+    require_exactly(L, 1);
+
+    if ( !lua_islightuserdata(L, 1) )
+        return luaL_argerror(L, 1, "not a light userdata");
+
+    struct bdev *base = lua_touserdata(L, 1);
+    lua_pop(L, 1);
+
+    struct bdev *ret = verify_create(base);
+    if ( ret ) lua_pushlightuserdata(L, ret);
+    else       lua_pushnil(L);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -282,6 +301,8 @@ void bind_druidraw(lua_State *L) {
     BIND(slice_open);
 
     BIND(stripe_open);
+
+    BIND(verify_create);
 
 #undef BIND
 

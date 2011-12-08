@@ -52,12 +52,15 @@ env.Program( 'prog/druid',
      'obj/lua/raw-bindings.o',
 
      'obj/bdev.o',
+     'obj/crc.o',
+
      'obj/layers/baseio.o',
      'obj/layers/concat.o',
      'obj/layers/encrypt.o',
      'obj/layers/nbd.o',
      'obj/layers/slice.o',
-     'obj/layers/stripe.o'] )
+     'obj/layers/stripe.o',
+     'obj/layers/verify.o'] )
 
 # tests
 
