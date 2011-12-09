@@ -1,6 +1,5 @@
 function make_base()
-    local ram = druidraw.bio_create_malloc(1024, 1024*64)
-    return ram
+    return druid.ram(1024, 1024*64)
 end
 
 -- use LuaSocket
@@ -54,11 +53,9 @@ function unpack_be32(str)
 end
 
 function handle_client(client, device)
-    local size = druidraw.bdev_get_block_size(device) * druidraw.bdev_get_block_count(device)
-
     client:send(NBD_PASSWD)
     client:send(NBD_INITMAGIC)
-    client:send(pack_be64(size))
+    client:send(pack_be64(device.size))
 
     local zeroes = ''
     for i = 1,128 do zeroes = zeroes .. string.char(0) end
@@ -93,8 +90,8 @@ function handle_client(client, device)
         if cmd == NBD_CMD_READ then
             print("read " .. from .. "+" .. len)
             local res = nil
-            if from + len <= size then
-                res = druidraw.bdev_read_bytes(device, from, len)
+            if from + len <= device.size then
+                res = device:read_bytes(from, len)
                 if res == nil then
                     print("read failed in the underlying device")
                 end
@@ -122,13 +119,13 @@ function handle_client(client, device)
             print("write " .. from .. "+" .. len)
             local data = client:receive(len)
             local res = false
-            if from + len > size then
+            if from + len > device.size then
                 print("oversize write")
             elseif data:len() ~= len then
                 print("missized read from socket")
                 return
             else
-                res = druidraw.bdev_write_bytes(device, from, data)
+                res = device:write_bytes(from, data)
             end
 
             local r = NBD_RESPONSE_MAGIC
@@ -157,7 +154,7 @@ print("Now listening on " .. ip .. ":" .. port)
 
 local device = make_base()
 
-print("Created device of length " .. (druidraw.bdev_get_block_size(device) * druidraw.bdev_get_block_count(device)))
+print("Created device of length " .. device.size)
 
 while true do
     collectgarbage("collect")
@@ -166,6 +163,6 @@ while true do
     handle_client(client, device)
     client:close()
     print("done with client")
-    druidraw.bdev_flush(device)
+    device:flush()
 end
 
