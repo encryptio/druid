@@ -1,5 +1,8 @@
 import os
-env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc -g -D_GNU_SOURCE', LIBS='readline')
+env = Environment( ENV = os.environ)
+env.Append(CCFLAGS = '-O2 -Wall -std=c99 -g -D_GNU_SOURCE')
+env.Append(CPPPATH = 'src')
+env.Append(LIBS='readline')
 
 env.ParseConfig('pkg-config --cflags --libs openssl')
 env.ParseConfig('pkg-config --cflags --libs lua')
