@@ -1,5 +1,6 @@
 #include "layers/verify.h"
 
+#include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -26,6 +27,9 @@
  *   32-bit crc, big-endian, for data block 3 in the chunk
  *   ...
  *
+ * all crcs are xored with the crc of the zero block. this makes the all-zero
+ * device valid.
+ *
  */
 
 struct verify_io {
@@ -37,7 +41,29 @@ struct verify_io {
 
     uint8_t *hash_block;
     uint64_t which_hash_block;
+
+    uint32_t zero_crc;
 };
+
+static inline void create_zero_crc(struct bdev *dev) {
+    struct verify_io *io = dev->m;
+
+    uint8_t zeroes[16];
+    memset(zeroes, 0, 16);
+
+    int to_send = dev->block_size;
+    uint32_t crc = crc_init();
+
+    while ( to_send >= 16 ) {
+        to_send -= 16;
+        crc = crc_update(crc, zeroes, 16);
+    }
+
+    if ( to_send )
+        crc = crc_update(crc, zeroes, to_send);
+
+    io->zero_crc = crc_finalize(crc);
+}
 
 static inline bool verify_is_hblock(struct bdev *dev, uint64_t index) {
     struct verify_io *io = dev->m;
@@ -59,7 +85,7 @@ static bool verify_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
         io->which_hash_block = needed_hash_block;
     }
 
-    uint32_t needed_crc = unpack_be32(io->hash_block+interior_offset*4);
+    uint32_t needed_crc = unpack_be32(io->hash_block+interior_offset*4) ^ io->zero_crc;
 
     if ( !io->base->read_block(io->base, needed_data_block, into) )
         return false;
@@ -91,7 +117,7 @@ static bool verify_write_block(struct bdev *self, uint64_t which, const uint8_t 
     
     // write the crc
     // TODO: don't write the crc header until chunk change or flushed
-    pack_be32(calc_crc32(from, self->block_size), io->hash_block+interior_offset*4);
+    pack_be32(calc_crc32(from, self->block_size) ^ io->zero_crc, io->hash_block+interior_offset*4);
     if ( !io->base->write_block(io->base, needed_hash_block, io->hash_block) )
         return false;
 
@@ -182,6 +208,8 @@ struct bdev *verify_create(struct bdev *base) {
     assert(io->data_block_count > 0);
 
     dev->block_count = io->data_block_count;
+
+    create_zero_crc(dev);
 
     return dev;
 }
