@@ -4,6 +4,8 @@ env = Environment(CCFLAGS = '-O2 -Wall -std=c99 -Isrc -g -D_GNU_SOURCE', LIBS='r
 env.ParseConfig('pkg-config --cflags --libs openssl')
 env.ParseConfig('pkg-config --cflags --libs lua')
 
+env.Append( BUILDERS={'File2H' : Builder(action = "perl file2h.pl $SOURCE > $TARGET")} )
+
 def runTest(env,target,source):
     import subprocess
     app = str(source[0].abspath)
@@ -36,6 +38,9 @@ env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
 env.Object( 'obj/lua/main.o', 'src/lua/main.c' )
 env.Object( 'obj/lua/raw-bindings.o', 'src/lua/raw-bindings.c' )
 
+env.File2H( 'src/lua/AUTOGEN-porcelain-data.h', 'src/lua/druid.lua' )
+Depends(env.Object( 'obj/lua/porcelain.o', 'src/lua/porcelain.c' ), 'src/lua/AUTOGEN-porcelain-data.h')
+
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
 env.Object( 'obj/tests/baseio.o', 'src/tests/baseio.c' )
@@ -50,6 +55,7 @@ env.Object( 'obj/tests/slice.o', 'src/tests/slice.c' )
 env.Program( 'prog/druid',
     ['obj/lua/main.o',
      'obj/lua/raw-bindings.o',
+     'obj/lua/porcelain.o',
 
      'obj/bdev.o',
      'obj/crc.o',

@@ -1,4 +1,5 @@
 #include "lua/raw-bindings.h"
+#include "lua/porcelain.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -35,6 +36,7 @@ int main(int argc, char **argv) {
 
     luaL_openlibs(L);
     bind_druidraw(L);
+    bind_druid_porcelain(L);
 
     lua_gc(L, LUA_GCCOLLECT, 0);
 

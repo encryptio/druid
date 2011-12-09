@@ -2,3 +2,4 @@
 /.sconsign.dblite
 /obj
 /prog
+/src/lua/AUTOGEN-porcelain-data.h
