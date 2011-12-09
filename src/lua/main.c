@@ -38,12 +38,11 @@ int main(int argc, char **argv) {
 
     lua_gc(L, LUA_GCCOLLECT, 0);
 
-    if ( argc >= 2 ) {
-        if ( luaL_dofile(L, argv[1]) ) {
-            fprintf(stderr, "error executing '%s': %s\n", argv[1], luaL_checkstring(L, -1));
+    for (int i = 1; i < argc; i++)
+        if ( luaL_dofile(L, argv[i]) ) {
+            fprintf(stderr, "error executing '%s': %s\n", argv[i], luaL_checkstring(L, -1));
             exit(1);
         }
-    }
 
     lua_gc(L, LUA_GCCOLLECT, 0);
 
