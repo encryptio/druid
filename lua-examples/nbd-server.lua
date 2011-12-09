@@ -111,8 +111,6 @@ function handle_client(client, device)
                 r = r .. res
             end
 
-            print("response length = " .. r:len())
-
             client:send(r)
 
         elseif cmd == NBD_CMD_WRITE then
@@ -135,8 +133,6 @@ function handle_client(client, device)
                 r = r .. RESPONSE_NOK
             end
             r = r .. handle
-
-            print("response length = " .. r:len())
 
             client:send(r)
         else
