@@ -223,4 +223,14 @@ function verify(dev)
     return maybe_wrap_bdev(druidraw.verify_create(dev.io), {dev})
 end
 
+function lazyzero_create(dev)
+    checktype(dev, "device", "dev")
+    return druidraw.lazyzero_create(dev.io)
+end
+
+function lazyzero(dev)
+    checktype(dev, "device", "dev")
+    return maybe_wrap_bdev(druidraw.lazyzero_open(dev.io), {dev})
+end
+
 return druid

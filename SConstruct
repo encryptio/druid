@@ -31,6 +31,7 @@ env.Object( 'obj/layers/encrypt.o', 'src/layers/encrypt.c' )
 env.Object( 'obj/layers/slice.o', 'src/layers/slice.c' )
 env.Object( 'obj/layers/stripe.o', 'src/layers/stripe.c' )
 env.Object( 'obj/layers/concat.o', 'src/layers/concat.c' )
+env.Object( 'obj/layers/lazyzero.o', 'src/layers/lazyzero.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
@@ -59,6 +60,7 @@ env.Program( 'prog/druid',
 
      'obj/bdev.o',
      'obj/crc.o',
+     'obj/block-cache.o',
 
      'obj/layers/baseio.o',
      'obj/layers/concat.o',
@@ -66,7 +68,8 @@ env.Program( 'prog/druid',
      'obj/layers/nbd.o',
      'obj/layers/slice.o',
      'obj/layers/stripe.o',
-     'obj/layers/verify.o'] )
+     'obj/layers/verify.o',
+     'obj/layers/lazyzero.o'] )
 
 # tests
 
