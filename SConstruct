@@ -8,8 +8,8 @@ env.Append( BUILDERS={'File2H' : Builder(action = "perl file2h.pl $SOURCE > $TAR
 
 def runTest(env,target,source):
     import subprocess
-    app = str(source[0].abspath)
-    if not subprocess.call(app):
+
+    if not subprocess.call(map(lambda x: x.abspath, source)):
         open(str(target[0]),'w').write("PASSED\n")
     else:
         return 1
@@ -93,4 +93,11 @@ env.Command(".test.encrypt.passed", 'prog/tests/encrypt', runTest);
 
 env.Program( 'prog/tests/slice', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/slice.o', 'obj/tests/test.o', 'obj/tests/slice.o'] )
 env.Command(".test.slice.passed", 'prog/tests/slice', runTest);
+
+# lua tests
+
+def luaTest(script):
+    env.Command(".test.lua."+script+".passed", ['prog/druid', 'tests/'+script+'.lua'], runTest)
+
+luaTest("test-testlib")
 
