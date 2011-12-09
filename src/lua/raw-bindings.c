@@ -74,7 +74,7 @@ static int bind_bdev_read_bytes(lua_State *L) {
 
     struct bdev *dev = lua_touserdata(L, 1);
     uint64_t start   = luaL_checknumber(L, 2);
-    uint64_t len     = luaL_checknumber(L, 2);
+    uint64_t len     = luaL_checknumber(L, 3);
     lua_pop(L, 3);
 
     uint8_t *data;
