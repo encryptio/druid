@@ -459,6 +459,39 @@ static int bind_verify_create(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// finalizer for bdevs
+
+static int bind_close_on_gc_finalizer(lua_State *L) {
+    struct bdev **ptr = luaL_checkudata(L, 1, "druid closeongc");
+    lua_pop(L, 1);
+    (*ptr)->close(*ptr);
+    return 0;
+}
+
+static int bind_close_on_gc(lua_State *L) {
+    if ( !lua_islightuserdata(L, 1) )
+        return luaL_argerror(L, 1, "not a light userdata");
+
+    struct bdev *base = lua_touserdata(L, 1);
+    lua_pop(L, 1);
+
+    struct bdev **ptr = lua_newuserdata(L, sizeof(struct bdev *));
+    *ptr = base;
+    int at = lua_gettop(L);
+
+    if ( luaL_newmetatable(L, "druid closeongc") ) {
+        int table = lua_gettop(L);
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, bind_close_on_gc_finalizer);
+        lua_settable(L, table);
+    }
+
+    lua_setmetatable(L, at);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // public interface
 
 void bind_druidraw(lua_State *L) {
@@ -499,6 +532,8 @@ void bind_druidraw(lua_State *L) {
     BIND(stripe_open);
 
     BIND(verify_create);
+
+    BIND(close_on_gc);
 
 #undef BIND
 
