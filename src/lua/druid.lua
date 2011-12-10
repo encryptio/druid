@@ -79,9 +79,10 @@ function bdev:write_bytes(start, data)
     checktype(data,  "string", "data")
     if start+data:len() > self.size then
         error("Can't write past the end of the device", 2)
-    end
-    if start < 0 then
+    elseif start < 0 then
         error("Can't write before the start of the device", 2)
+    elseif data:len() == 0 then
+        error("Can't write 0 bytes", 2)
     end
 
     return druidraw.bdev_write_bytes(self.io, start, data)
