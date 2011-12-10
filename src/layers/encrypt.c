@@ -135,8 +135,11 @@ bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen) {
 
     if ( !dev->write_block(dev, 0, block) ) {
         fprintf(stderr, "[encrypt] couldn't write header block\n");
+        free(block);
         return false;
     }
+
+    free(block);
     
     // the rest of the blocks have implied data
 
