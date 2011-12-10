@@ -77,7 +77,7 @@ end
 function bdev:write_bytes(start, data)
     checktype(start, "int",    "start")
     checktype(data,  "string", "data")
-    if start+data:len() > self.size then
+    if start+data:len() >= self.size then
         error("Can't write past the end of the device", 2)
     elseif start < 0 then
         error("Can't write before the start of the device", 2)
