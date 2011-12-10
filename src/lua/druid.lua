@@ -207,6 +207,8 @@ function slice(dev, start, len)
         error("Can't open a slice to before the start of the device", 2)
     elseif start+len > dev.block_count then
         error("Can't open a slice to after the end of the device", 2)
+    elseif len <= 0 then
+        error("Can't open a slice with a non-positive size", 2)
     end
 
     return maybe_wrap_bdev(druidraw.slice_open(dev.io, start, len), {dev})
