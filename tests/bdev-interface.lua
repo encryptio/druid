@@ -2,6 +2,8 @@ require("tests/testlib")
 
 local base = druid.ram(4, 8)
 test.type(base, "device")
+test.eq(base.block_size, 4)
+test.eq(base.block_count, 8)
 
 local word1 = string.char(0x00, 0x01, 0x02, 0x03)
 local word2 = string.char(0x04, 0x05, 0x06, 0x07)
