@@ -47,7 +47,7 @@ struct enc_io {
 
 // out is a pointer to a 56-byte chunk of memory
 static void strengthen_key(const uint8_t *key, int keylen, uint8_t *out) {
-    assert(keylen <= 56);
+    if ( keylen > 56 ) keylen = 56;
 
     // zero pad into *out
     memset(out, 0, 56);
@@ -94,7 +94,10 @@ static void make_key_verification(BF_KEY *bf, uint8_t *into) {
 }
 
 bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen) {
-    assert(dev->block_size >= 28);
+    if ( dev->block_size < 28 ) {
+        fprintf(stderr, "[encrypt] can't create an encryption device with a block size less than 28 bytes\n");
+        return false;
+    }
 
     //////
     // encrypted random baseiv
@@ -200,7 +203,10 @@ static void encrypt_sync(struct bdev *self) {
 }
 
 struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
-    assert(base->block_size >= 28);
+    if ( dev->block_size < 28 ) {
+        fprintf(stderr, "[encrypt] can't create an encryption device with a block size less than 28 bytes\n");
+        return false;
+    }
 
     struct bdev *dev;
     if ( (dev = malloc(sizeof(struct bdev))) == NULL )

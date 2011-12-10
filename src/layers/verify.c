@@ -160,8 +160,8 @@ struct bdev *verify_create(struct bdev *base) {
         return NULL;
     }
 
-    if ( base->block_size < 2 ) {
-        fprintf(stderr, "[verify] can't create a verify object atop a device with a block size less than 2 bytes");
+    if ( base->block_size < 4 ) {
+        fprintf(stderr, "[verify] can't create a verify object atop a device with a block size less than 4 bytes");
         return NULL;
     }
 

@@ -142,8 +142,14 @@ static void lazyzero_sync(struct bdev *self) {
 }
 
 bool lazyzero_create(struct bdev *base) {
-    assert(base->block_size > 32);
-    assert(base->block_count >= 3);
+    if ( base->block_size < 32 ) {
+        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with a block size less than 32 bytes\n");
+        return false;
+    }
+    if ( base->block_count < 3 ) {
+        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with less than 3 blocks\n");
+        return false;
+    }
 
     uint64_t bits_per_block = base->block_size*8;
     uint64_t chunk_size = 1024; // TODO: automatically adjust based on device size. this is okay for 2TB @ 512B
@@ -180,8 +186,14 @@ END:
 }
 
 struct bdev *lazyzero_open(struct bdev *base) {
-    assert(base->block_size > 32);
-    assert(base->block_count >= 3);
+    if ( base->block_size < 32 ) {
+        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with a block size less than 32 bytes\n");
+        return false;
+    }
+    if ( base->block_count < 3 ) {
+        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with less than 3 blocks\n");
+        return false;
+    }
 
     uint8_t *buf;
     if ( (buf = malloc(base->block_size)) == NULL )
