@@ -42,11 +42,11 @@ test.doeserr(function() base:read_bytes(-1,1) end)
 test.doeserr(function() base:read_bytes(0,0)  end)
 test.doeserr(function() base:read_bytes(8*4,1)  end)
 test.doeserr(function() base:read_bytes(3)    end)
-test.doeserr(function() base:read_bytes(8*4-4,4)  end)
+test.doeserr(function() base:read_bytes(8*4-3,4)  end)
 
 test.doeserr(function() base:write_bytes(0, "") end)
 test.doeserr(function() base:write_bytes(0.5, "a") end)
 test.doeserr(function() base:write_bytes(2) end)
 test.doeserr(function() base:write_bytes(1, 1) end)
-test.doeserr(function() base:write_bytes(4*8-4, "asdf") end)
+test.doeserr(function() base:write_bytes(4*8-3, "asdf") end)
 
