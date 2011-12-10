@@ -9,6 +9,7 @@
 #include "endian-fns.h"
 #include "bitvector.h"
 #include "block-cache.h"
+#include "logger.h"
 
 /*
  * lazy zeroing of devices by way of a header bitmap
@@ -144,11 +145,11 @@ static void lazyzero_sync(struct bdev *self) {
 
 bool lazyzero_create(struct bdev *base) {
     if ( base->block_size < 32 ) {
-        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with a block size less than 32 bytes\n");
+        logger(LOG_ERR, "lazyzero", "Can't create a lazyzero on a device with a block size less than 32 bytes");
         return false;
     }
     if ( base->block_count < 3 ) {
-        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with less than 3 blocks\n");
+        logger(LOG_ERR, "lazyzero", "Can't create a lazyzero on a device with less than 3 blocks");
         return false;
     }
 
@@ -188,11 +189,11 @@ END:
 
 struct bdev *lazyzero_open(struct bdev *base) {
     if ( base->block_size < 32 ) {
-        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with a block size less than 32 bytes\n");
+        logger(LOG_ERR, "lazyzero", "Can't create a lazyzero on a device with a block size less than 32 bytes");
         return false;
     }
     if ( base->block_count < 3 ) {
-        fprintf(stderr, "[lazyzero] can't create a lazyzero on a device with less than 3 blocks\n");
+        logger(LOG_ERR, "lazyzero", "Can't create a lazyzero on a device with less than 3 blocks");
         return false;
     }
 
@@ -212,7 +213,7 @@ struct bdev *lazyzero_open(struct bdev *base) {
         goto BAD_END;
 
     if ( memcmp(buf, MAGIC, 8) != 0 ) {
-        fprintf(stderr, "[lazyzero] bad magic\n");
+        logger(LOG_ERR, "lazyzero", "Bad magic number");
         goto BAD_END;
     }
 
@@ -223,15 +224,15 @@ struct bdev *lazyzero_open(struct bdev *base) {
     io->base           = base;
 
     if ( header_block_count != base->block_count ) {
-        fprintf(stderr, "[lazyzero] device was initialized for %llu blocks, "
-                "but is now %llu blocks.\n",
+        logger(LOG_ERR, "lazyzero", "Device was initialized for %llu blocks, "
+                "but is now %llu blocks.",
                 header_block_count,
                 base->block_count);
         goto BAD_END;
     }
 
     if ( io->bitmap_blocks * io->bits_per_block < base->block_count-1-io->bitmap_blocks ) {
-        fprintf(stderr, "[lazyzero] not enough bitmap blocks for this device size\n");
+        logger(LOG_ERR, "lazyzero", "Not enough bitmap blocks for this device size");
         goto BAD_END;
     }
 

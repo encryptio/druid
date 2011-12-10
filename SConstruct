@@ -38,6 +38,7 @@ env.Object( 'obj/layers/lazyzero.o', 'src/layers/lazyzero.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
+env.Object( 'obj/logger.o', 'src/logger.c' )
 
 env.Object( 'obj/lua/main.o', 'src/lua/main.c' )
 env.Object( 'obj/lua/raw-bindings.o', 'src/lua/raw-bindings.c' )
@@ -64,6 +65,7 @@ env.Program( 'prog/druid',
      'obj/bdev.o',
      'obj/crc.o',
      'obj/block-cache.o',
+     'obj/logger.o',
 
      'obj/layers/baseio.o',
      'obj/layers/concat.o',
@@ -76,25 +78,25 @@ env.Program( 'prog/druid',
 
 # tests
 
-env.Program( 'prog/tests/gf_arithmetic', ['obj/rs/galois_field.o', 'obj/tests/test.o', 'obj/tests/gf_arithmetic.o'] )
+env.Program( 'prog/tests/gf_arithmetic', ['obj/rs/galois_field.o', 'obj/tests/test.o', 'obj/tests/gf_arithmetic.o', 'obj/logger.o'] )
 env.Command(".test.gf_arithmetic.passed", 'prog/tests/gf_arithmetic', runTest)
 
-env.Program( 'prog/tests/rs', ['obj/rs/galois_field.o', 'obj/rs/reed_solomon.o', 'obj/tests/test.o', 'obj/tests/rs.o'] )
+env.Program( 'prog/tests/rs', ['obj/rs/galois_field.o', 'obj/rs/reed_solomon.o', 'obj/tests/test.o', 'obj/tests/rs.o', 'obj/logger.o'] )
 env.Command(".test.rs.passed", 'prog/tests/rs', runTest)
 
-env.Program( 'prog/tests/baseio', ['obj/layers/baseio.o', 'obj/bdev.o', 'obj/tests/test.o', 'obj/tests/baseio.o'] )
+env.Program( 'prog/tests/baseio', ['obj/layers/baseio.o', 'obj/bdev.o', 'obj/tests/test.o', 'obj/tests/baseio.o', 'obj/logger.o'] )
 env.Command(".test.baseio.passed", 'prog/tests/baseio', runTest);
 
-env.Program( 'prog/tests/verify', ['obj/layers/verify.o', 'obj/bdev.o', 'obj/layers/baseio.o', 'obj/tests/test.o', 'obj/tests/verify.o', 'obj/crc.o'] )
+env.Program( 'prog/tests/verify', ['obj/layers/verify.o', 'obj/bdev.o', 'obj/layers/baseio.o', 'obj/tests/test.o', 'obj/tests/verify.o', 'obj/crc.o', 'obj/logger.o'] )
 env.Command(".test.verify.passed", 'prog/tests/verify', runTest);
 
-#env.Program( 'prog/tests/partitioner', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/partitioner.o', 'obj/tests/test.o', 'obj/tests/partitioner.o'] )
+#env.Program( 'prog/tests/partitioner', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/partitioner.o', 'obj/tests/test.o', 'obj/tests/partitioner.o', 'obj/logger.o'] )
 #env.Command(".test.partitioner.passed", 'prog/tests/partitioner', runTest);
 
-env.Program( 'prog/tests/encrypt', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/encrypt.o', 'obj/tests/test.o', 'obj/tests/encrypt.o'] )
+env.Program( 'prog/tests/encrypt', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/encrypt.o', 'obj/tests/test.o', 'obj/tests/encrypt.o', 'obj/logger.o'] )
 env.Command(".test.encrypt.passed", 'prog/tests/encrypt', runTest);
 
-env.Program( 'prog/tests/slice', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/slice.o', 'obj/tests/test.o', 'obj/tests/slice.o'] )
+env.Program( 'prog/tests/slice', ['obj/bdev.o', 'obj/layers/baseio.o', 'obj/layers/slice.o', 'obj/tests/test.o', 'obj/tests/slice.o', 'obj/logger.o'] )
 env.Command(".test.slice.passed", 'prog/tests/slice', runTest);
 
 # lua tests

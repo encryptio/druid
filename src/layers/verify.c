@@ -8,6 +8,7 @@
 
 #include "endian-fns.h"
 #include "crc.h"
+#include "logger.h"
 
 /*
  * verification layer, using crc32
@@ -93,7 +94,11 @@ static bool verify_read_block(struct bdev *self, uint64_t which, uint8_t *into) 
     uint32_t read_crc = calc_crc32(into, self->block_size);
 
     if ( needed_crc != read_crc ) {
-        //fprintf(stderr, "[verify] CRC error on block %llu (mapped %llu) - %d != %d\n", (unsigned long long)needed_data_block, (unsigned long long)which, read_crc, needed_crc);
+        logger(LOG_JUNK, "verify", "CRC error on block %llu (mapped %llu) - %d != %d",
+                (unsigned long long)needed_data_block,
+                (unsigned long long)which,
+                read_crc,
+                needed_crc);
         return false;
     }
 
@@ -156,12 +161,13 @@ struct bdev *verify_create(struct bdev *base) {
     struct bdev *dev;
 
     if ( base->block_count == 1 ) {
-        fprintf(stderr, "[verify] can't create a verify object atop a one-block device\n");
+        logger(LOG_ERR, "verify", "Can't create a verify object atop a one-block device");
         return NULL;
     }
 
     if ( base->block_size < 4 ) {
-        fprintf(stderr, "[verify] can't create a verify object atop a device with a block size less than 4 bytes\n");
+        logger(LOG_ERR, "verify", "Can't create a verify object atop a device with a block size less than 4 bytes (is %llu bytes)",
+                (unsigned long long)base->block_size);
         return NULL;
     }
 

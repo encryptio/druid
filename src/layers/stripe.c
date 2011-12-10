@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <err.h>
 
+#include "logger.h"
+
 // TODO: testing routines
 
 struct stripe_io {
@@ -73,8 +75,8 @@ struct bdev *stripe_open(struct bdev **devices, int count) {
         assert(devices[i]);
 
         if ( devices[i]->block_size != block_size ) {
-            fprintf(stderr, "[stripe] can't stripe devices with"
-                    "different block sizes (%llu and %llu)\n",
+            logger(LOG_ERR, "stripe", "Can't stripe devices with"
+                    "different block sizes (%llu and %llu)",
                     block_size,
                     devices[i]->block_size);
             return NULL;
@@ -91,7 +93,7 @@ struct bdev *stripe_open(struct bdev **devices, int count) {
     }
 
     if ( min_drive_size != max_drive_size )
-        fprintf(stderr, "[stripe] some disks in array are smaller than others. "
+        logger(LOG_WARN, "stripe", "Some disks in array are smaller than others. "
                 "will truncate long drives to %llu blocks. "
                 "(longest = %llu blocks)\n",
                 min_drive_size, max_drive_size);

@@ -1,6 +1,7 @@
 #include "layers/nbd.h"
 
 #include "endian-fns.h"
+#include "logger.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -63,7 +64,7 @@ static bool nbd_recvall(int s, uint8_t *msg, int len) {
 static uint8_t databuffer[128*1024];
 static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
     struct bdev *dev = nbd->dev;
-    fprintf(stderr, "[nbd] sending preamble\n");
+    logger(LOG_JUNK, "nbd", "sending preamble");
     memcpy(databuffer, NBD_PASSWD, 8);
     memcpy(databuffer+8, NBD_INITMAGIC, 8);
     pack_be64(dev->block_size*dev->block_count, databuffer+16);
@@ -94,7 +95,8 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
         bool res;
         switch ( cmd ) {
             case NBD_CMD_READ:
-                fprintf(stderr, "[nbd] read %llu bytes at %llu\n", (unsigned long long)len, (unsigned long long)from);
+                logger(LOG_JUNK, "nbd", "read %llu bytes at %llu",
+                        (unsigned long long)len, (unsigned long long)from);
                 res = dev->read_bytes(dev, from, len, databuffer);
 
                 memcpy(buffer, (void*) NBD_RESPONSE_MAGIC, 4);
@@ -109,7 +111,8 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
                 break;
 
             case NBD_CMD_WRITE:
-                fprintf(stderr, "[nbd] write %llu bytes at %llu\n", (unsigned long long)len, (unsigned long long)from);
+                logger(LOG_JUNK, "nbd", "write %llu bytes at %llu",
+                        (unsigned long long)len, (unsigned long long)from);
                 if ( !nbd_recvall(s, databuffer, len) ) return;
 
                 res = dev->write_bytes(dev, from, len, databuffer);
@@ -122,7 +125,7 @@ static void nbd_handle_client_socket(struct nbd_server *nbd, int s) {
                 break;
 
             default:
-                fprintf(stderr, "PROTOCOL ERROR: unknown command %u\n", cmd);
+                logger(LOG_INFO, "nbd", "Protocol error: unknown command %u. Disconnecting.", cmd);
                 return;
         }
     }
@@ -159,18 +162,18 @@ void nbd_listenloop(struct nbd_server *nbd) {
     if ( listen(servfd, 1) < 0 )
         err(1, "Couldn't listen()");
 
-    fprintf(stderr, "[nbd] listening on port %d\n", (int)nbd->port);
+    logger(LOG_INFO, "nbd", "Listening on port %d", (int)nbd->port);
 
     struct sockaddr_storage their_addr;
     socklen_t their_addr_len = sizeof(struct sockaddr_storage);
     int clientfd;
     while ( (clientfd = accept(servfd, (struct sockaddr *restrict) &their_addr, &their_addr_len)) >= 0 ) {
-        fprintf(stderr, "[nbd] got client connection\n");
+        logger(LOG_INFO, "nbd", "Got client connection");
         nbd_handle_client_socket(nbd, clientfd);
         close(clientfd);
         nbd->dev->flush(nbd->dev);
         nbd->dev->clear_caches(nbd->dev);
-        fprintf(stderr, "[nbd] closed client connection\n");
+        logger(LOG_INFO, "nbd", "Closed client connection");
     }
 
     freeaddrinfo(servinfo);

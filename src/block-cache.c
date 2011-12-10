@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "bitvector.h"
+#include "logger.h"
 
 // TODO: make this thrash less on hash collisions
 
@@ -68,7 +69,7 @@ static void bcache_evict(struct block_cache *bc, uint32_t hv) {
     size_t offset = hv*bc->base->block_size;
     if ( bit_get(bc->dirty, hv) )
         if ( !bc->base->write_block(bc->base, bc->indexes[hv], bc->data + offset) )
-            fprintf(stderr, "[block-cache] FAILED TO WRITE BLOCK WHEN EVICTING FROM CACHE\n");
+            logger(LOG_ERR, "block-cache", "Failed to write block when evicting from cache");
 
     bit_clear(bc->dirty, hv);
     bc->indexes[hv] = 0xFFFFFFFFFFFFFFFFULL;

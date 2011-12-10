@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <err.h>
 
+#include "logger.h"
+
 struct slice_io {
     struct bdev *base;
     uint64_t start, len;
@@ -57,7 +59,7 @@ static void slice_sync(struct bdev *self) {
 struct bdev *slice_open(struct bdev *base, uint64_t start, uint64_t len) {
     assert(len > 0);
     if ( base->block_count < start+len ) {
-        fprintf(stderr, "[slice] can't create slice: too large for the underlying device\n");
+        logger(LOG_ERR, "slice", "Can't create slice: too large for the underlying device");
         return NULL;
     }
 

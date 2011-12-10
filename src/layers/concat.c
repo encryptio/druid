@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <err.h>
 
+#include "logger.h"
+
 // TODO: testing routines
 
 struct concat_io {
@@ -105,8 +107,8 @@ struct bdev *concat_open(struct bdev **devices, int count) {
         assert(devices[i]);
 
         if ( devices[i]->block_size != block_size ) {
-            fprintf(stderr, "[concat] can't concat devices with"
-                    "different block sizes (%llu and %llu)\n",
+            logger(LOG_ERR, "concat", "Can't concat devices with"
+                    "different block sizes (%llu and %llu)",
                     block_size,
                     devices[i]->block_size);
             return NULL;

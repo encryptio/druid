@@ -10,6 +10,8 @@
 #include <err.h>
 #include <errno.h>
 
+#include "logger.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Memory IO, both in-process with malloc and on-disk with mmap
 
@@ -94,7 +96,8 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->block_count = blocks;
 
     if ( (io->base = malloc(block_size * blocks)) == NULL ) {
-        fprintf(stderr, "Couldn't allocate device memory (%llu blocks of %llu bytes each\n", (unsigned long long) block_size, (unsigned long long) blocks);
+        logger(LOG_ERR, "baseio", "Couldn't allocate device memory (%llu blocks of %llu bytes each",
+                (unsigned long long) block_size, (unsigned long long) blocks);
         goto ERROR;
     }
 
@@ -136,7 +139,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     io->mmaplen = block_size * blocks;
 
     if ( (io->base = mmap(NULL, block_size * blocks, PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset)) == MAP_FAILED ) {
-        fprintf(stderr, "Couldn't mmap device memory (%llu blocks of %llu bytes each: %s\n", (unsigned long long) block_size, (unsigned long long) blocks, strerror(errno));
+        logger(LOG_ERR, "baseio", "Couldn't mmap device memory (%llu blocks of %llu bytes each: %s",
+                (unsigned long long) block_size, (unsigned long long) blocks, strerror(errno));
         goto ERROR;
     }
 
@@ -162,7 +166,8 @@ static bool fd_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
     struct fd_io *io = self->m;
     ssize_t ret = pread(io->fd, into, self->block_size, which*self->block_size+io->offset);
     if ( ret == -1 ) {
-        fprintf(stderr, "[baseio:fd] Couldn't read from file: %s\n", strerror(errno));
+        logger(LOG_WARN, "baseio", "Couldn't read from file (fd=%d): %s",
+                io->fd, strerror(errno));
         return false;
     }
 
@@ -178,12 +183,14 @@ static bool fd_write_block(struct bdev *self, uint64_t which, const uint8_t *fro
     struct fd_io *io = self->m;
     ssize_t ret = pwrite(io->fd, from, self->block_size, which*self->block_size+io->offset);
     if ( ret == -1 ) {
-        fprintf(stderr, "[baseio:fd] Couldn't write to file: %s\n", strerror(errno));
+        logger(LOG_WARN, "baseio", "Couldn't write to file (fd=%d): %s",
+                io->fd, strerror(errno));
         return false;
     }
 
     if ( ret != self->block_size ) {
-        fprintf(stderr, "[baseio:fd] short write to file\n");
+        logger(LOG_WARN, "baseio", "Short write to file (fd=%d)",
+                io->fd);
         return false;
     }
 
@@ -199,7 +206,8 @@ static void fd_close(struct bdev *self) {
 static void fd_sync(struct bdev *self) {
     struct fd_io *io = self->m;
     if ( !fsync(io->fd) )
-        fprintf(stderr, "[baseio:fd] Couldn't fsync: %s\n", strerror(errno));
+        logger(LOG_ERR, "baseio", "Couldn't fsync (fd=%d): %s\n",
+                io->fd, strerror(errno));
 }
 
 struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset) {

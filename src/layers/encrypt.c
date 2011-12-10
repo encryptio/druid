@@ -7,6 +7,7 @@
 #include <err.h>
 
 #include "endian-fns.h"
+#include "logger.h"
 
 // using BF_* instead of EVP_* because we need to change the IV quickly
 #include <openssl/blowfish.h>
@@ -95,7 +96,7 @@ static void make_key_verification(BF_KEY *bf, uint8_t *into) {
 
 bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen) {
     if ( dev->block_size < 28 ) {
-        fprintf(stderr, "[encrypt] can't create an encryption device with a block size less than 28 bytes\n");
+        logger(LOG_ERR, "encrypt", "Can't create an encryption device with a block size less than 28 bytes");
         return false;
     }
 
@@ -134,7 +135,7 @@ bool encrypt_create(struct bdev *dev, const uint8_t *key, int keylen) {
     // finally, write it out
 
     if ( !dev->write_block(dev, 0, block) ) {
-        fprintf(stderr, "[encrypt] couldn't write header block\n");
+        logger(LOG_ERR, "encrypt", "Couldn't write header block");
         free(block);
         return false;
     }
@@ -207,7 +208,7 @@ static void encrypt_sync(struct bdev *self) {
 
 struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
     if ( base->block_size < 28 ) {
-        fprintf(stderr, "[encrypt] can't create an encryption device with a block size less than 28 bytes\n");
+        logger(LOG_ERR, "encrypt", "Can't create an encryption device with a block size less than 28 bytes");
         return false;
     }
 
@@ -249,20 +250,20 @@ struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
         goto BAD_END;
 
     if ( memcmp(t, MAGIC, 8) != 0 ) {
-        fprintf(stderr, "[encrypt] Bad magic number\n");
+        logger(LOG_ERR, "encrypt", "Bad magic number");
         goto BAD_END;
     }
 
     uint32_t mode = unpack_be32(t+8);
     if ( mode != 0 ) {
-        fprintf(stderr, "[encrypt] unsupported encryption mode\n");
+        logger(LOG_ERR, "encrypt", "Unsupported encryption mode");
         goto BAD_END;
     }
 
     uint8_t kv[8];
     make_key_verification(&(io->bf), kv);
     if ( memcmp(t+12, kv, 8) != 0 ) {
-        fprintf(stderr, "[encrypt] key verification failed\n");
+        logger(LOG_ERR, "encrypt", "Key verification failed");
         goto BAD_END;
     }
 
