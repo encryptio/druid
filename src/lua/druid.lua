@@ -63,11 +63,12 @@ end
 function bdev:read_bytes(start, len)
     checktype(start, "int", "start")
     checktype(len,   "int", "len")
-    if start+len > self.size then
+    if start+len >= self.size then
         error("Can't read past the end of the device", 2)
-    end
-    if start < 0 then
+    elseif start < 0 then
         error("Can't read before the start of the device", 2)
+    elseif len == 0 then
+        error("Can't read 0 bytes", 2)
     end
 
     return druidraw.bdev_read_bytes(self.io, start, len)
