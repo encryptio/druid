@@ -86,6 +86,8 @@ int main(int argc, char **argv) {
             test_consistency_bdev(enc);
             enc->close(enc);
         }
+
+        dev->close(dev);
     }
 
     test_exit();
