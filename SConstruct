@@ -105,4 +105,5 @@ def luaTest(script):
 luaTest("test-testlib")
 luaTest("bdev-interface")
 luaTest("sliceconcat")
+luaTest("verify")
 
