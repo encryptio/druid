@@ -107,4 +107,5 @@ luaTest("bdev-interface")
 luaTest("sliceconcat")
 luaTest("verify")
 luaTest("stripe")
+luaTest("lazyzero")
 
