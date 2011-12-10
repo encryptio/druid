@@ -1,19 +1,19 @@
 test = {}
 
 function test.type(val, ty)
-    if t == "int" then
+    if ty == "int" then
         if type(val) ~= "number" then
             error("expected an integer (is "..type(val)..")", 2)
         end
         if val ~= math.floor(val) then
             error("expected an integer (is fractional)", 2)
         end
-    elseif t == "device" then
+    elseif ty == "device" then
         if type(val) ~= "table" or not val.is_bdev then
             error("expected a device (is "..type(val)..")", 2)
         end
-    elseif type(val) ~= t then
-        error("expected a "..t.." (is "..type(val)..")", 2)
+    elseif type(val) ~= ty then
+        error("expected a "..ty.." (is "..type(val)..")", 2)
     end
 end
 
