@@ -157,10 +157,15 @@ function file()
 end
 
 function concat(...)
+    local data_found = {}
     local raw_args = {}
     for _,v in ipairs(arg) do
         checktype(v, "device")
         raw_args[#raw_args+1] = v.io
+        if data_found[v.io] then
+            error("Can't concat a device with itself", 2)
+        end
+        data_found[v.io] = true
     end
 
     return maybe_wrap_bdev(druidraw.concat_open(unpack(raw_args)), arg)
@@ -215,10 +220,15 @@ function slice(dev, start, len)
 end
 
 function stripe(...)
+    local data_found = {}
     local raw_args = {}
     for _,v in ipairs(arg) do
         checktype(v, "device")
         raw_args[#raw_args+1] = v.io
+        if data_found[v.io] then
+            error("Can't stripe a device with itself", 2)
+        end
+        data_found[v.io] = true
     end
 
     return maybe_wrap_bdev(druidraw.stripe_open(unpack(raw_args)), arg)
