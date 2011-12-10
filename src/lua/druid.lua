@@ -10,6 +10,8 @@ local assert = assert
 local error = error
 local type = type
 local math = math
+local ipairs = ipairs
+local unpack = unpack
 
 _G.druidraw = nil -- keep users from stumbling upon this
 setfenv(1, druid)
