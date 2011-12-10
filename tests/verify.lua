@@ -37,3 +37,5 @@ test.ok(ram:write_block(0, zeroblock))
 test.eq(v:read_block(0), nil)
 test.eq(v:read_block(v.block_count-1), zeroblock)
 
+test.eq(druid.verify(druid.ram(2,8)), nil)
+
