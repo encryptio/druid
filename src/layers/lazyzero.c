@@ -81,8 +81,9 @@ static bool lazyzero_clear_chunk(struct bdev *self, uint64_t chunk) {
 
     uint64_t base_block = chunk * io->chunk_size + io->bitmap_blocks + 1;
     for (uint64_t i = 0; i < io->chunk_size; i++)
-        if ( !io->base->write_block(io->base, base_block + i, self->generic_block_buffer) )
-            return false;
+        if ( base_block+i < io->base->block_count )
+            if ( !io->base->write_block(io->base, base_block + i, self->generic_block_buffer) )
+                return false;
 
     return true;
 }
@@ -216,9 +217,10 @@ struct bdev *lazyzero_open(struct bdev *base) {
     }
 
     uint64_t header_block_count = unpack_be64(buf+8);
-    io->bitmap_blocks = unpack_be64(buf+16);
-    io->chunk_size    = unpack_be64(buf+24);
+    io->bitmap_blocks  = unpack_be64(buf+16);
+    io->chunk_size     = unpack_be64(buf+24);
     io->bits_per_block = base->block_size*8;
+    io->base           = base;
 
     if ( header_block_count != base->block_count ) {
         fprintf(stderr, "[lazyzero] device was initialized for %llu blocks, "
