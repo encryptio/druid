@@ -42,6 +42,12 @@ function test.compare(val, expect)
     end
 end
 
+function test.ok(val)
+    if not val then
+        error("not ok", 2)
+    end
+end
+
 function test.eq(val, expect)
     if not test.compare(val, expect) then
         error("equality failed", 2)
