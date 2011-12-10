@@ -36,17 +36,19 @@ for i=0,z.block_count-1 do
     end
 end
 
+druid.log_show_level('none')
 test.doeserr(function ()
     local r = druid.ram(32, 64)
     r:write_block(0, zeroblock)
-    local z = druid.lazyzero(r)
+    local z = druid.lazyzero(r) -- dies, bad magic number
     test.type(z, "device")
 end)
 
 for blocksize=1,31 do
     test.doeserr(function ()
         local r = druid.ram(blocksize, 64)
-        test.ok(druid.lazyzero_create(r))
+        test.ok(druid.lazyzero_create(r)) -- dies, block size too small
     end)
 end
+druid.log_show_level('info')
 
