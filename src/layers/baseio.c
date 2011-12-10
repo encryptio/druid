@@ -69,7 +69,6 @@ static void mem_mmap_sync(struct bdev *self) {
 
 struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     assert(block_size);
-    assert(!(block_size & (block_size-1))); // is a power of two
 
     struct bdev *dev;
     if ( (dev = malloc(sizeof(struct bdev))) == NULL )
@@ -110,7 +109,6 @@ ERROR:
 
 struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset) {
     assert(block_size);
-    assert(!(block_size & (block_size-1))); // is a power of two
 
     struct bdev *dev;
     if ( (dev = malloc(sizeof(struct bdev))) == NULL )
@@ -206,7 +204,6 @@ static void fd_sync(struct bdev *self) {
 
 struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset) {
     assert(block_size);
-    assert(!(block_size & (block_size-1))); // is a power of two
 
     struct bdev *dev;
     if ( (dev = malloc(sizeof(struct bdev))) == NULL )
