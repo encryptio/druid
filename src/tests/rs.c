@@ -47,6 +47,8 @@ void rs_test_run(int n, int m) {
 
         for (int i = 0; i < n; i++)
             test(newstuff[i] == data[i]);
+
+        rs_free(rev);
     }
 DONE:
 
