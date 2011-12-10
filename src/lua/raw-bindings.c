@@ -492,6 +492,41 @@ static int bind_lazyzero_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "logger.h"
+
+static int bind_logger(lua_State *L) {
+    require_exactly(L, 3);
+
+    int level = luaL_checkint(L, 1);
+    const char *module = luaL_checkstring(L, 2);
+    const char *str    = luaL_checkstring(L, 3);
+
+    logger(level, module, "%s", str);
+
+    return 0;
+}
+
+static int bind_logger_set_output(lua_State *L) {
+    require_exactly(L, 1);
+
+    int fd = luaL_checkint(L, 1);
+
+    logger_set_output(fd);
+
+    return 0;
+}
+
+static int bind_logger_set_level(lua_State *L) {
+    require_exactly(L, 1);
+
+    int level = luaL_checkint(L, 1);
+
+    logger_set_level(level);
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // finalizer for bdevs
 
 static int bind_close_on_gc_finalizer(lua_State *L) {
@@ -568,6 +603,10 @@ void bind_druidraw(lua_State *L) {
 
     BIND(lazyzero_create);
     BIND(lazyzero_open);
+
+    BIND(logger);
+    BIND(logger_set_output);
+    BIND(logger_set_level);
 
     BIND(close_on_gc);
 

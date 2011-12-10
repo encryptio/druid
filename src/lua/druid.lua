@@ -10,6 +10,7 @@ local assert = assert
 local error = error
 local type = type
 local math = math
+local string = string
 local ipairs = ipairs
 local unpack = unpack
 
@@ -247,6 +248,49 @@ end
 function lazyzero(dev)
     checktype(dev, "device", "dev")
     return maybe_wrap_bdev(druidraw.lazyzero_open(dev.io), {dev})
+end
+
+--------------------------------------------------------------------------------
+-- logger
+
+local LOG_UNKNOWN = -1
+local LOG_JUNK = 0
+local LOG_INFO = 1
+local LOG_WARN = 2
+local LOG_ERR  = 3
+
+local LOG_ALL = LOG_JUNK
+local LOG_NONE = LOG_ERR+1
+
+local function log_nametonum(name)
+    name = string.lower(name)
+    if     name == 'junk' then return LOG_JUNK
+    elseif name == 'info' then return LOG_INFO
+    elseif name == 'warn' then return LOG_WARN
+    elseif name == 'err'  then return LOG_ERR
+    elseif name == 'all'  then return LOG_ALL
+    elseif name == 'none' then return LOG_NONE
+    else return LOG_UNKNOWN
+    end
+end
+
+function log(level, mod, str)
+    checktype(level, "string", "level")
+    checktype(mod,   "string", "mod")
+    checktype(str,   "string", "str")
+
+    level = log_nametonum(level)
+    druidraw.logger(level, mod, str)
+end
+
+function log_show_level(level)
+    checktype(level, "string", "level")
+
+    level = log_nametonum(level)
+    if level == LOG_UNKNOWN then
+        error("unknown log level", 2)
+    end
+    druidraw.logger_set_level(level)
 end
 
 return druid
