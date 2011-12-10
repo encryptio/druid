@@ -105,6 +105,8 @@ void test_corruption(struct bdev *dev, struct bdev *basis) {
     test( !dev->read_block(dev, 0, block) );
     test( !dev->read_block(dev, 1, block) );
     test( !dev->read_block(dev, 2, block) );
+
+    free(block);
 }
 
 int main(int argc, char **argv) {
