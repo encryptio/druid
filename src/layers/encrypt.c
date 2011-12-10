@@ -203,7 +203,7 @@ static void encrypt_sync(struct bdev *self) {
 }
 
 struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
-    if ( dev->block_size < 28 ) {
+    if ( base->block_size < 28 ) {
         fprintf(stderr, "[encrypt] can't create an encryption device with a block size less than 28 bytes\n");
         return false;
     }

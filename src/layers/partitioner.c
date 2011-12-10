@@ -270,7 +270,7 @@ static bool partitioner_block_set_maploc(struct part_io *io, uint64_t which, uin
 
 bool partitioner_initialize(struct bdev *dev) {
     if ( dev->block_size < 512 ) {
-        fprintf(stderr, "[partitioner] can't initialize a device with a block size less than 512 bytes");
+        fprintf(stderr, "[partitioner] can't initialize a device with a block size less than 512 bytes\n");
         return false;
     }
 
@@ -318,7 +318,7 @@ END:
 
 bool partitioner_set_part_size(struct bdev *dev, int partition, uint64_t new_size) {
     if ( dev->block_size < 512 ) {
-        fprintf(stderr, "[partitioner] can't edit a device with a block size less than 512 bytes");
+        fprintf(stderr, "[partitioner] can't edit a device with a block size less than 512 bytes\n");
         return false;
     }
 
@@ -531,7 +531,7 @@ static void part_clear_caches(struct bdev *dev) {
 // special case: partition=-1 means don't open a partition
 struct bdev *partitioner_open(struct bdev *dev, int partition) {
     if ( dev->block_size < 512 ) {
-        fprintf(stderr, "[partitioner] can't open a device with a block size less than 512 bytes");
+        fprintf(stderr, "[partitioner] can't open a device with a block size less than 512 bytes\n");
         return NULL;
     }
 
