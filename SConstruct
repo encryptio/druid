@@ -103,4 +103,5 @@ def luaTest(script):
     env.Command(".test.lua."+script+".passed", ['prog/druid', 'tests/'+script+'.lua'], runTest)
 
 luaTest("test-testlib")
+luaTest("bdev-interface")
 
