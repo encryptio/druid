@@ -56,6 +56,8 @@ struct block_cache *bcache_create(struct bdev *base, uint32_t limit) {
 }
 
 void bcache_destroy(struct block_cache *bc) {
+    bcache_flush(bc);
+
     free(bc->data);
     free(bc->indexes);
     free(bc->dirty);
