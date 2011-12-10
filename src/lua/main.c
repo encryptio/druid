@@ -73,6 +73,8 @@ int main(int argc, char **argv) {
 
     lua_gc(L, LUA_GCCOLLECT, 0);
 
+    lua_close(L);
+
     exit(0);
 }
 
