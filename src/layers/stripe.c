@@ -95,7 +95,7 @@ struct bdev *stripe_open(struct bdev **devices, int count) {
     if ( min_drive_size != max_drive_size )
         logger(LOG_WARN, "stripe", "Some disks in array are smaller than others. "
                 "will truncate long drives to %llu blocks. "
-                "(longest = %llu blocks)\n",
+                "(longest = %llu blocks)",
                 min_drive_size, max_drive_size);
 
     struct bdev *dev;
