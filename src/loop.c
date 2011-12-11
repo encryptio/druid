@@ -65,7 +65,9 @@ void loop_add_timer(double in, loop_timer_cb cb, void *data) {
     when.tv_usec = ((double) in - when.tv_sec) * 1000000;
     if ( when.tv_usec < 0 ) when.tv_usec = 0; // stupid floating point
 
-    event_base_once(base, -1, 0, loop_timeout_cb, t, &when);
+    // TODO: leaks
+    struct event *e = evtimer_new(base, loop_timeout_cb, t);
+    evtimer_add(e, &when);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
