@@ -6,7 +6,15 @@ env.Append(LIBS='readline')
 
 env.ParseConfig('pkg-config --cflags --libs openssl')
 env.ParseConfig('pkg-config --cflags --libs lua')
-env.ParseConfig('pkg-config --cflags --libs libevent')
+
+uname = os.popen("uname").read().rstrip()
+
+if uname == 'OpenBSD':
+    # openbsd doesn't have libevent, only libev and its emulation layer.
+    # unfortunately it doesn't have a .pc in the package.
+    env.Append(LIBS='event')
+else:
+    env.ParseConfig('pkg-config --cflags --libs libevent')
 
 env.Append( BUILDERS={'File2H' : Builder(action = "perl file2h.pl $SOURCE > $TARGET")} )
 
