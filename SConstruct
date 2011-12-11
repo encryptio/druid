@@ -13,6 +13,10 @@ if uname == 'OpenBSD':
     # openbsd doesn't have libevent, only libev and its emulation layer.
     # unfortunately it doesn't have a .pc in the package.
     env.Append(LIBS='event')
+
+    # OpenBSD also requires curses for its readline implementation.
+    # again, no .pc for readline.
+    env.Append(LIBS='curses')
 else:
     env.ParseConfig('pkg-config --cflags --libs libevent')
 
