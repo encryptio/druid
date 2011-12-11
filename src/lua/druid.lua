@@ -293,4 +293,18 @@ function log_show_level(level)
     druidraw.logger_set_level(level)
 end
 
+--------------------------------------------------------------------------------
+-- loop management
+
+function stoploop()
+    druidraw.loop_exit_early()
+end
+
+function timer(t, fn)
+    checktype(t,  "number",   "t")
+    checktype(fn, "function", "fn")
+
+    druidraw.loop_add_timer(t, fn)
+end
+
 return druid

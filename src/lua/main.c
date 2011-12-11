@@ -1,5 +1,7 @@
 #include "lua/raw-bindings.h"
 #include "lua/porcelain.h"
+#include "loop.h"
+#include "logger.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -36,6 +38,18 @@ static void interactive_loop(lua_State *L) {
     fprintf(stdout, "\r\033[K");
 }
 
+static int runloop(lua_State *L) {
+    lua_pop(L, 1); // pop the userdata from lua_cpcall
+
+    loop_until_done();
+
+    // TODO: make this work well with the event loop
+    //if ( run_interactive )
+    //    interactive_loop(L);
+
+    return 0;
+}
+
 int main(int argc, char **argv) {
     lua_State *L = luaL_newstate();
     assert(L);
@@ -48,6 +62,8 @@ int main(int argc, char **argv) {
 
     if ( lua_gettop(L) )
         lua_pop(L, lua_gettop(L));
+
+    loop_setup();
 
     bool run_interactive = false;
 
@@ -68,12 +84,15 @@ int main(int argc, char **argv) {
     if ( argc == 1 )
         run_interactive = true;
 
-    if ( run_interactive )
-        interactive_loop(L);
+    if ( lua_cpcall(L, runloop, NULL) ) {
+        logger(LOG_ERR, "main", "Uncaught Lua error after main loop started: %s", lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
 
     lua_gc(L, LUA_GCCOLLECT, 0);
-
     lua_close(L);
+
+    loop_teardown();
 
     exit(0);
 }

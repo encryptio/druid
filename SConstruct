@@ -6,6 +6,7 @@ env.Append(LIBS='readline')
 
 env.ParseConfig('pkg-config --cflags --libs openssl')
 env.ParseConfig('pkg-config --cflags --libs lua')
+env.ParseConfig('pkg-config --cflags --libs libevent')
 
 env.Append( BUILDERS={'File2H' : Builder(action = "perl file2h.pl $SOURCE > $TARGET")} )
 
@@ -39,6 +40,7 @@ env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
 env.Object( 'obj/logger.o', 'src/logger.c' )
+env.Object( 'obj/loop.o', 'src/loop.c' )
 
 env.Object( 'obj/lua/main.o', 'src/lua/main.c' )
 env.Object( 'obj/lua/raw-bindings.o', 'src/lua/raw-bindings.c' )
@@ -66,6 +68,7 @@ env.Program( 'prog/druid',
      'obj/crc.o',
      'obj/block-cache.o',
      'obj/logger.o',
+     'obj/loop.o',
 
      'obj/layers/baseio.o',
      'obj/layers/concat.o',
