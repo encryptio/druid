@@ -146,6 +146,7 @@ def expectTest(dirname):
     Depends(c, 'tests/'+dirname+'/go.lua')
     Depends(c, 'tests/'+dirname+'/expect')
     Depends(c, 'expect-test.pl')
+    Depends(c, 'prog/druid')
 
 expectTest("timer")
 
