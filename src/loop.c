@@ -60,15 +60,12 @@ void loop_add_timer(double in, loop_timer_cb cb, void *data) {
     t->cb = cb;
     t->data = data;
 
-    struct event *e = event_new(base, -1, 0, loop_timeout_cb, t);
-    assert(e != NULL);
-
     struct timeval when;
     when.tv_sec = in;
     when.tv_usec = ((double) in - when.tv_sec) * 1000000;
     if ( when.tv_usec < 0 ) when.tv_usec = 0; // stupid floating point
 
-    event_add(e, &when);
+    event_base_once(base, -1, 0, loop_timeout_cb, t, &when);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
