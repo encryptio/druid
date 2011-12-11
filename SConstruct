@@ -149,4 +149,5 @@ def expectTest(dirname):
     Depends(c, 'prog/druid')
 
 expectTest("timer")
+expectTest("stoploop")
 
