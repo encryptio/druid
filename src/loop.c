@@ -45,12 +45,18 @@ static void loop_fatal_cb(int err) {
 ////////////////////////////////////////////////////////////////////////////////
 // timers
 
-struct loop_timer { loop_timer_cb cb; void *data; };
+struct loop_timer { loop_timer_cb cb; void *data; struct event *e; };
 
 static void loop_timeout_cb(evutil_socket_t fd, short what, void *data) {
     struct loop_timer *t = data;
-    t->cb(t->data);
+    event_free(t->e);
+
+    // grab the data and free, in case the callback errors
+    loop_timer_cb cb = t->cb;
+    void *d = t->data;
     free(t);
+
+    cb(d);
 }
 
 void loop_add_timer(double in, loop_timer_cb cb, void *data) {
@@ -65,9 +71,8 @@ void loop_add_timer(double in, loop_timer_cb cb, void *data) {
     when.tv_usec = ((double) in - when.tv_sec) * 1000000;
     if ( when.tv_usec < 0 ) when.tv_usec = 0; // stupid floating point
 
-    // TODO: leaks
-    struct event *e = evtimer_new(base, loop_timeout_cb, t);
-    evtimer_add(e, &when);
+    t->e = evtimer_new(base, loop_timeout_cb, t);
+    evtimer_add(t->e, &when);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
