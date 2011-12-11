@@ -126,3 +126,26 @@ luaTest("verify")
 luaTest("stripe")
 luaTest("lazyzero")
 
+# "expect" tests
+
+def runExpectTest(env,target,source):
+    import subprocess
+
+    cmd = ['perl', 'expect-test.pl']
+    for x in source:
+        cmd.append(x.abspath)
+
+    if not subprocess.call(cmd):
+        open(str(target[0]),'w').write("PASSED\n")
+        return None
+    else:
+        return 1
+
+def expectTest(dirname):
+    c = env.Command(".test.expect."+dirname+".passed", 'tests/'+dirname, runExpectTest)
+    Depends(c, 'tests/'+dirname+'/go.lua')
+    Depends(c, 'tests/'+dirname+'/expect')
+    Depends(c, 'expect-test.pl')
+
+expectTest("timer")
+
