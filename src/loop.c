@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <err.h>
 
+#include <event2/dns.h>
 #include <event2/event.h>
 
 #include "logger.h"
@@ -11,6 +12,44 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static struct event_base *base = NULL;
+static struct evdns_base *base_dns = NULL;
+static int base_dns_users = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+// evdns management
+//
+// For some reason, evdns_base objects keep their event_bases alive, even if
+// there's nothing for them to do.
+//
+// I cannot describe how fucking retarded that is.
+//
+// Work around it by allocating base_dns when wanted and deallocating it when
+// unused.
+
+static void evdns_refcount_increment(void) {
+    assert(base);
+
+    if ( base_dns_users == 0 ) {
+        assert(base_dns == NULL);
+        base_dns = evdns_base_new(base, 1);
+        assert(base_dns != NULL);
+    }
+
+    base_dns_users++;
+}
+
+static void evdns_refcount_decrement(void) {
+    assert(base);
+    assert(base_dns);
+
+    base_dns_users--;
+    assert(base_dns_users >= 0);
+
+    if ( base_dns_users == 0 ) {
+        evdns_base_free(base_dns, 1);
+        base_dns = NULL;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
