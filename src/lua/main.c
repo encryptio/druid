@@ -11,6 +11,25 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+////////////////////////////////////////////////////////////////////////////////
+// GC loop
+
+// TODO: tune for common usage
+#define GC_INTERVAL 10
+
+static void gc_loop_fn(void *data) {
+    static int gc_counter = 0;
+    gc_counter++;
+
+    if ( gc_counter == GC_INTERVAL ) {
+        gc_counter = 0;
+        lua_State *L = data;
+        lua_gc(L, LUA_GCSTEP, 1);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static bool run_interactive = false;
 
 static void interactive_loop(lua_State *L) {
@@ -65,6 +84,8 @@ int main(int argc, char **argv) {
         lua_pop(L, lua_gettop(L));
 
     loop_setup();
+
+    loop_do_repeatedly_whenever(gc_loop_fn, L);
 
     for (int i = 1; i < argc; i++) {
         if ( strcmp(argv[i], "-i") == 0 ) {
