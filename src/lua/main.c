@@ -16,6 +16,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+static bool run_interactive = false;
+
 static void interactive_loop(lua_State *L) {
     if ( !isatty(fileno(stdout)) ) {
         fprintf(stderr, "Can't open an interactive shell when stdout is not a tty");
@@ -44,8 +46,8 @@ static int runloop(lua_State *L) {
     loop_until_done();
 
     // TODO: make this work well with the event loop
-    //if ( run_interactive )
-    //    interactive_loop(L);
+    if ( run_interactive )
+        interactive_loop(L);
 
     return 0;
 }
@@ -64,8 +66,6 @@ int main(int argc, char **argv) {
         lua_pop(L, lua_gettop(L));
 
     loop_setup();
-
-    bool run_interactive = false;
 
     for (int i = 1; i < argc; i++) {
         if ( strcmp(argv[i], "-i") == 0 ) {
