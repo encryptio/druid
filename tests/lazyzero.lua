@@ -36,7 +36,7 @@ for i=0,z.block_count-1 do
     end
 end
 
-druid.log_show_level('none')
+druid.log_set_level('none')
 test.doeserr(function ()
     local r = druid.ram(32, 64)
     r:write_block(0, zeroblock)
@@ -50,5 +50,5 @@ for blocksize=1,31 do
         test.ok(druid.lazyzero_create(r)) -- dies, block size too small
     end)
 end
-druid.log_show_level('info')
+druid.log_set_level('info')
 

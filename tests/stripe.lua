@@ -50,9 +50,9 @@ local r4 = druid.ram(1,6)
 test.type(r4, "device")
 test.ok(r4:write_bytes(0,"123456"))
 
-druid.log_show_level('err')
+druid.log_set_level('err')
 s = druid.stripe(r1,r2,r3,r4)
-druid.log_show_level('info')
+druid.log_set_level('info')
 test.type(s, "device")
 
 test.eq(s.block_count, 16)
@@ -66,9 +66,9 @@ test.eq(r2:read_bytes(0,4), "BFJN")
 test.eq(r3:read_bytes(0,4), "CGKO")
 test.eq(r4:read_bytes(0,6), "DHLP56")
 
-druid.log_show_level('err')
+druid.log_set_level('err')
 s = druid.stripe(r4,r1)
-druid.log_show_level('info')
+druid.log_set_level('info')
 test.type(s, "device")
 
 test.eq(s.block_count, 8)

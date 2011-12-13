@@ -284,7 +284,7 @@ function log(level, mod, str)
     druidraw.logger(level, mod, str)
 end
 
-function log_show_level(level)
+function log_set_level(level)
     checktype(level, "string", "level")
 
     level = log_nametonum(level)

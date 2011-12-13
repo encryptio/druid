@@ -37,7 +37,7 @@ test.ok(ram:write_block(0, zeroblock))
 test.eq(v:read_block(0), nil)
 test.eq(v:read_block(v.block_count-1), zeroblock)
 
-druid.log_show_level('none')
+druid.log_set_level('none')
 test.eq(druid.verify(druid.ram(2,8)), nil)
-druid.log_show_level('info')
+druid.log_set_level('info')
 
