@@ -1,4 +1,4 @@
-#include "lua/raw-bindings.h"
+#include "lua/bind.h"
 #include "lua/porcelain.h"
 #include "loop.h"
 #include "logger.h"
@@ -8,10 +8,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
-
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -57,7 +53,10 @@ int main(int argc, char **argv) {
     assert(L);
 
     luaL_openlibs(L);
-    bind_druidraw(L);
+
+    lua_pushcfunction(L, bind_druidraw);
+    lua_call(L, 0, 0);
+
     bind_druid_porcelain(L);
 
     lua_gc(L, LUA_GCCOLLECT, 0);

@@ -55,7 +55,11 @@ env.Object( 'obj/logger.o', 'src/logger.c' )
 env.Object( 'obj/loop.o', 'src/loop.c' )
 
 env.Object( 'obj/lua/main.o', 'src/lua/main.c' )
-env.Object( 'obj/lua/raw-bindings.o', 'src/lua/raw-bindings.c' )
+env.Object( 'obj/lua/bind.o', 'src/lua/bind.c' )
+env.Object( 'obj/lua/bind-bdevs.o', 'src/lua/bind-bdevs.c' )
+env.Object( 'obj/lua/bind-socket.o', 'src/lua/bind-socket.c' )
+env.Object( 'obj/lua/bind-timer.o', 'src/lua/bind-timer.c' )
+env.Object( 'obj/lua/bind-logger.o', 'src/lua/bind-logger.c' )
 
 env.File2H( 'src/lua/AUTOGEN-porcelain-data.h', 'src/lua/druid.lua' )
 Depends(env.Object( 'obj/lua/porcelain.o', 'src/lua/porcelain.c' ), 'src/lua/AUTOGEN-porcelain-data.h')
@@ -73,7 +77,11 @@ env.Object( 'obj/tests/slice.o', 'src/tests/slice.c' )
 
 env.Program( 'prog/druid',
     ['obj/lua/main.o',
-     'obj/lua/raw-bindings.o',
+     'obj/lua/bind.o',
+     'obj/lua/bind-bdevs.o',
+     'obj/lua/bind-timer.o',
+     'obj/lua/bind-socket.o',
+     'obj/lua/bind-logger.o',
      'obj/lua/porcelain.o',
 
      'obj/bdev.o',

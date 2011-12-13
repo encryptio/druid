@@ -1,41 +1,6 @@
-#include "lua/raw-bindings.h"
+#include "lua/bind.h"
 
 #include <stdlib.h>
-#include <err.h>
-#include <assert.h>
-#include <string.h>
-
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-
-static inline void require_atleast(lua_State *L, int ct) {
-    int got = lua_gettop(L);
-    if ( got < ct ) {
-        luaL_where(L, 1);
-        lua_pushliteral(L, "Need more arguments (wanted ");
-        lua_pushnumber(L, ct);
-        lua_pushliteral(L, ", got ");
-        lua_pushnumber(L, got);
-        lua_pushliteral(L, ")");
-        lua_concat(L, 6);
-        lua_error(L);
-    }
-}
-
-static inline void require_exactly(lua_State *L, int ct) {
-    int got = lua_gettop(L);
-    if ( got != ct ) {
-        luaL_where(L, 1);
-        lua_pushliteral(L, "Wrong number of arguments (wanted ");
-        lua_pushnumber(L, ct);
-        lua_pushliteral(L, ", got ");
-        lua_pushnumber(L, got);
-        lua_pushliteral(L, ")");
-        lua_concat(L, 6);
-        lua_error(L);
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 #include "bdev.h"
@@ -454,41 +419,6 @@ static int bind_lazyzero_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#include "logger.h"
-
-static int bind_logger(lua_State *L) {
-    require_exactly(L, 3);
-
-    int level = luaL_checkint(L, 1);
-    const char *module = luaL_checkstring(L, 2);
-    const char *str    = luaL_checkstring(L, 3);
-
-    logger(level, module, "%s", str);
-
-    return 0;
-}
-
-static int bind_logger_set_output(lua_State *L) {
-    require_exactly(L, 1);
-
-    int fd = luaL_checkint(L, 1);
-
-    logger_set_output(fd);
-
-    return 0;
-}
-
-static int bind_logger_set_level(lua_State *L) {
-    require_exactly(L, 1);
-
-    int level = luaL_checkint(L, 1);
-
-    logger_set_level(level);
-
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // finalizer for bdevs
 
 static int bind_close_on_gc_finalizer(lua_State *L) {
@@ -522,380 +452,48 @@ static int bind_close_on_gc(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#include "loop.h"
 
-struct timer_data {
-    lua_State *L;
-    int refnum;
-};
-
-static void bind_loop_timer_cb(void *data) {
-    struct timer_data *t = data;
-    lua_State *L = t->L;
-    int refnum = t->refnum;
-    free(t);
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, refnum);
-    if ( lua_pcall(L, 0, 0, 0) ) {
-        loop_exit_early();
-        luaL_unref(L, LUA_REGISTRYINDEX, refnum);
-        lua_error(L); // TODO: is it possible for Lua to catch this?
-    }
-}
-
-static int bind_loop_add_timer(lua_State *L) {
-    require_exactly(L, 2);
-
-    double in = luaL_checknumber(L, 1);
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-
-    struct timer_data *t;
-    if ( (t = malloc(sizeof(struct timer_data))) == NULL )
-        err(1, "Couldn't allocate space for timer_data");
-
-    t->refnum = luaL_ref(L, LUA_REGISTRYINDEX); // TODO: is the registry okay to do this with?
-    t->L = L;
-
-    loop_add_timer(in, bind_loop_timer_cb, t);
-
-    lua_pop(L, 1);
-
-    return 0;
-}
-
-static int bind_loop_exit_early(lua_State *L) {
-    require_exactly(L, 0);
-
-    loop_exit_early();
-
-    return 0;
-}
-
-enum socket_state {
-    SOCKET_CONNECTING,
-    SOCKET_OPEN,
-    SOCKET_DESTROYED,
-};
-
-////////////////////////////////////////
-// Socket functions
-
-#define SOCKET_READ_SIZE 1024
-#define SOCKET_HOST_LEN 64
-
-struct socket_data {
-    lua_State *L;
-
-    enum socket_state state;
-
-    int error_cb_ref;
-    int connect_cb_ref;
-    int read_cb_ref;
-
-    int sd_ref;
-
-    struct loop_sockhandle *sock;
-
-    uint8_t buffer[SOCKET_READ_SIZE];
-
-    char host[SOCKET_HOST_LEN];
-    uint16_t port;
-};
-
-static int bind_loop_sock_gc(lua_State *L) {
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    if ( sd->state == SOCKET_DESTROYED )
-        return 0;
-
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->sd_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->error_cb_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->connect_cb_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->read_cb_ref);
-
-    loop_sock_close(sd->sock);
-    sd->sock = NULL;
-
-    sd->state = SOCKET_DESTROYED;
-
-    lua_pop(L, 1);
-
-    return 0;
-}
-
-static int bind_loop_sock_write(lua_State *L) {
-    require_exactly(L, 2);
-
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    if ( sd->state == SOCKET_DESTROYED )
-        return 0;
-
-    size_t amt = 0;
-    const char *buf = luaL_checklstring(L, 2, &amt);
-    assert(buf != NULL);
-
-    loop_sock_write(sd->sock, (const uint8_t *)buf, amt);
-
-    lua_pop(L, 2);
-
-    return 0;
-}
-
-static int bind_loop_sock_close(lua_State *L) {
+int bind_bdevs(lua_State *L) {
     require_exactly(L, 1);
+    luaL_checktype(L, 1, LUA_TTABLE);
 
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    if ( sd->state == SOCKET_DESTROYED )
-        return 0;
+    luaL_Reg reg[] = {
+        { "bdev_get_block_size", bind_bdev_get_block_size },
+        { "bdev_get_block_count", bind_bdev_get_block_count },
+        { "bdev_read_bytes", bind_bdev_read_bytes },
+        { "bdev_write_bytes", bind_bdev_write_bytes },
+        { "bdev_read_block", bind_bdev_read_block },
+        { "bdev_write_block", bind_bdev_write_block },
+        { "bdev_close", bind_bdev_close },
+        { "bdev_clear_caches", bind_bdev_clear_caches },
+        { "bdev_flush", bind_bdev_flush },
+        { "bdev_sync", bind_bdev_sync },
 
-    return bind_loop_sock_gc(L);
-}
+        { "bio_create_malloc", bind_bio_create_malloc },
+        { "bio_create_mmap", bind_bio_create_mmap },
+        { "bio_create_posixfd", bind_bio_create_posixfd },
 
-static int bind_loop_sock_get_hostname(lua_State *L) {
-    require_exactly(L, 1);
+        { "concat_open", bind_concat_open },
 
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    lua_pop(L, 1);
+        { "encrypt_create", bind_encrypt_create },
+        { "encrypt_open", bind_encrypt_open },
 
-    lua_pushstring(L, sd->host);
-    
-    return 1;
-}
+        { "slice_open", bind_slice_open },
 
-static int bind_loop_sock_get_port(lua_State *L) {
-    require_exactly(L, 1);
+        { "stripe_open", bind_stripe_open },
 
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    lua_pop(L, 1);
+        { "verify_create", bind_verify_create },
 
-    lua_pushinteger(L, sd->port);
+        { "lazyzero_create", bind_lazyzero_create },
+        { "lazyzero_open", bind_lazyzero_open },
+
+        { "close_on_gc", bind_close_on_gc },
+
+        { NULL, NULL }
+    };
+
+    luaL_register(L, NULL, reg);
 
     return 1;
 }
 
-static int bind_loop_sock_tostring(lua_State *L) {
-    require_exactly(L, 1);
-
-    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "tcp(");
-
-    if ( sd->state == SOCKET_CONNECTING )
-        lua_pushliteral(L, "connecting to ");
-    else if ( sd->state == SOCKET_OPEN )
-        lua_pushliteral(L, "connected to ");
-    else if ( sd->state == SOCKET_DESTROYED )
-        lua_pushliteral(L, "finished with ");
-    else
-        errx(1, "bind_loop_sock_tostring had no valid sd->state");
-
-    lua_pushstring(L, sd->host);
-    lua_pushliteral(L, " port ");
-    lua_pushinteger(L, sd->port);
-
-    lua_pushliteral(L, ")");
-
-    lua_concat(L, 6);
-    
-    return 1;
-}
-
-static void bind_loop_read_cb(size_t in_buffer, struct loop_sockhandle *h, void *data) {
-    struct socket_data *sd = data;
-    lua_State *L = sd->L;
-
-    if ( sd->state == SOCKET_DESTROYED ) {
-        logger(LOG_ERR, "bind", "Read callback called on an already destroyed socket");
-        return;
-    }
-
-    while ( in_buffer > 0 ) {
-        size_t ret = loop_sock_peek(h, sd->buffer, SOCKET_READ_SIZE);
-        assert(ret > 0);
-
-        loop_sock_drop(h, ret);
-        in_buffer -= ret;
-
-        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->read_cb_ref);
-        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
-        lua_pushlstring(L, (char *)sd->buffer, ret);
-        lua_call(L, 2, 0);
-    }
-}
-
-static void bind_loop_connect_cb(struct loop_sockhandle *h, void *data) {
-    struct socket_data *sd = data;
-    lua_State *L = sd->L;
-
-    if ( sd->state == SOCKET_DESTROYED ) {
-        logger(LOG_ERR, "bind", "Connect callback called on an already destroyed socket");
-        return;
-    }
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->connect_cb_ref);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
-    lua_call(L, 1, 0);
-}
-
-static void bind_loop_error_cb(int err, struct loop_sockhandle *h, void *data) {
-    struct socket_data *sd = data;
-    lua_State *L = sd->L;
-
-    if ( sd->state == SOCKET_DESTROYED )
-        return;
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->error_cb_ref);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
-    lua_pushinteger(L, err);
-    lua_call(L, 2, 0);
-
-    lua_pushcfunction(L, bind_loop_sock_gc);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
-    lua_call(L, 1, 0);
-}
-
-static int bind_loop_tcp_connect(lua_State *L) {
-    require_exactly(L, 5);
-
-    const char *host = luaL_checkstring(L, 1);
-    int port         = luaL_checkint(L, 2);
-    luaL_checktype(L, 3, LUA_TFUNCTION); // TODO: allow this to be nil for "raise errors"
-    luaL_checktype(L, 4, LUA_TFUNCTION);
-    luaL_checktype(L, 5, LUA_TFUNCTION);
-
-    luaL_argcheck(L, port >= 0 && port <= 65535, 2, "Port is out of range");
-    luaL_argcheck(L, strlen(host) > 0, 1, "Hostname is empty");
-
-    struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
-    assert(sd);
-    sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    sd->L = L;
-    sd->sock = loop_tcp_connect(host, port, bind_loop_error_cb, bind_loop_connect_cb, bind_loop_read_cb, sd);
-
-    if ( !sd->sock ) {
-        luaL_unref(L, LUA_REGISTRYINDEX, sd->sd_ref);
-
-        luaL_where(L, 1);
-        lua_pushliteral(L, "Couldn't setup TCP connection");
-        lua_concat(L, 2);
-        lua_error(L);
-    }
-
-    sd->read_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    sd->connect_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    sd->error_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    sd->state = SOCKET_CONNECTING;
-    
-    strncpy(sd->host, host, SOCKET_HOST_LEN);
-    sd->host[SOCKET_HOST_LEN-1] = '\0';
-    
-    sd->port = port;
-
-    lua_pop(L, 2); // host,port
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
-
-    // now the userdata is the only thing on the stack, no extraneous references
-    assert(lua_gettop(L) == 1);
-
-    if ( luaL_newmetatable(L, "druid socket") ) {
-        int table = lua_gettop(L);
-
-        lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, bind_loop_sock_gc);
-        lua_settable(L, table);
-
-        lua_pushliteral(L, "__tostring");
-        lua_pushcfunction(L, bind_loop_sock_tostring);
-        lua_settable(L, table);
-
-        lua_pushliteral(L, "__index");
-        if ( luaL_newmetatable(L, "druid socket methods") ) {
-            int table = lua_gettop(L);
-
-            lua_pushliteral(L, "write");
-            lua_pushcfunction(L, bind_loop_sock_write);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "close");
-            lua_pushcfunction(L, bind_loop_sock_close);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "get_hostname");
-            lua_pushcfunction(L, bind_loop_sock_get_hostname);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "get_port");
-            lua_pushcfunction(L, bind_loop_sock_get_port);
-            lua_settable(L, table);
-            
-            lua_pushliteral(L, "tostring");
-            lua_pushcfunction(L, bind_loop_sock_tostring);
-            lua_settable(L, table);
-        }
-        lua_settable(L, table);
-    }
-
-    lua_setmetatable(L, 1);
-
-    return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// public interface
-
-void bind_druidraw(lua_State *L) {
-    lua_newtable(L); // will be druidraw in global table
-    int table = lua_gettop(L);
-
-#define BIND(name) do { \
-    lua_pushliteral(L, #name); \
-    lua_pushcfunction(L, bind_##name); \
-    lua_settable(L, table); \
-} while (0)
-
-    BIND(bdev_get_block_size);
-    BIND(bdev_get_block_count);
-    BIND(bdev_read_bytes);
-    BIND(bdev_write_bytes);
-    BIND(bdev_read_block);
-    BIND(bdev_write_block);
-    BIND(bdev_close);
-    BIND(bdev_clear_caches);
-    BIND(bdev_flush);
-    BIND(bdev_sync);
-
-    BIND(bio_create_malloc);
-    BIND(bio_create_mmap);
-    BIND(bio_create_posixfd);
-
-    BIND(concat_open);
-
-    BIND(encrypt_create);
-    BIND(encrypt_open);
-
-    BIND(slice_open);
-
-    BIND(stripe_open);
-
-    BIND(verify_create);
-
-    BIND(lazyzero_create);
-    BIND(lazyzero_open);
-
-    BIND(logger);
-    BIND(logger_set_output);
-    BIND(logger_set_level);
-
-    BIND(close_on_gc);
-
-    BIND(loop_add_timer);
-    BIND(loop_exit_early);
-
-    BIND(loop_tcp_connect);
-
-#undef BIND
-
-    lua_setglobal(L, "druidraw");
-}
