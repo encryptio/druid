@@ -187,25 +187,6 @@ function encrypt(dev, key)
     return maybe_wrap_bdev(druidraw.encrypt_open(dev.io, key), {dev})
 end
 
-function nbd(dev, port)
-    checktype(dev,  "device", "dev")
-    checktype(port, "int",    "port")
-
-    if port < 0 or port > 65535 then
-        error("Need a reasonable port number", 2)
-    end
-
-    -- TODO: wrap better?
-
-    return druidraw.nbd_create(port, dev.io)
-end
-
-function nbd_listenloop(nbd)
-    checktype(nbd, "userdata", "nbd")
-
-    return druidraw.nbd_listenloop(nbd)
-end
-
 function slice(dev, start, len)
     checktype(dev,   "device", "dev")
     checktype(start, "int",    "start")
