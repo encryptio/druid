@@ -10,7 +10,7 @@ struct timer_data {
     int refnum;
 };
 
-static void bind_loop_timer_cb(void *data) {
+static void timer_cb(void *data) {
     struct timer_data *t = data;
     lua_State *L = t->L;
     int refnum = t->refnum;
@@ -24,7 +24,7 @@ static void bind_loop_timer_cb(void *data) {
     }
 }
 
-static int bind_loop_add_timer(lua_State *L) {
+static int bind_a_timer(lua_State *L) {
     require_exactly(L, 2);
 
     double in = luaL_checknumber(L, 1);
@@ -37,14 +37,14 @@ static int bind_loop_add_timer(lua_State *L) {
     t->refnum = luaL_ref(L, LUA_REGISTRYINDEX); // TODO: is the registry okay to do this with?
     t->L = L;
 
-    loop_add_timer(in, bind_loop_timer_cb, t);
+    loop_add_timer(in, timer_cb, t);
 
     lua_pop(L, 1);
 
     return 0;
 }
 
-static int bind_loop_exit_early(lua_State *L) {
+static int bind_stop_loop(lua_State *L) {
     require_exactly(L, 0);
 
     loop_exit_early();
@@ -57,8 +57,8 @@ int bind_timer(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     luaL_Reg reg[] = {
-        { "timer", bind_loop_add_timer },
-        { "stop_loop", bind_loop_exit_early },
+        { "timer", bind_a_timer },
+        { "stop_loop", bind_stop_loop },
         { NULL, NULL }
     };
 
