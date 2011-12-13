@@ -17,9 +17,9 @@ static void timer_cb(void *data) {
     free(t);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, refnum);
+    luaL_unref(L, LUA_REGISTRYINDEX, refnum);
     if ( lua_pcall(L, 0, 0, 0) ) {
         loop_exit_early();
-        luaL_unref(L, LUA_REGISTRYINDEX, refnum);
         lua_error(L); // TODO: is it possible for Lua to catch this?
     }
 }
