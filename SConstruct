@@ -125,6 +125,7 @@ luaTest("sliceconcat")
 luaTest("verify")
 luaTest("stripe")
 luaTest("lazyzero")
+luaTest("tcp-client-errors")
 
 # "expect" tests
 
