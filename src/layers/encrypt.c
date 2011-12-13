@@ -55,7 +55,7 @@ static void strengthen_key(const uint8_t *key, int keylen, uint8_t *out) {
     memcpy(out, key, keylen);
 
     uint8_t hash[20];
-    for (int i = 0; i < 100000; i++) {
+    for (int i = 0; i < 10000; i++) {
         // add the sha1 hash to the out array by xor,
         // shifting its location on each iteration
 
