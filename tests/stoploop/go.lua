@@ -10,6 +10,6 @@ end)
 
 druid.timer(1.5, function()
     print("stopping")
-    druid.stoploop()
+    druid.stop_loop()
 end)
 

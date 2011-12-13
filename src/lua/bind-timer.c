@@ -58,7 +58,7 @@ int bind_timer(lua_State *L) {
 
     luaL_Reg reg[] = {
         { "loop_add_timer", bind_loop_add_timer },
-        { "loop_exit_early", bind_loop_exit_early },
+        { "stop_loop", bind_loop_exit_early },
         { NULL, NULL }
     };
 

@@ -297,9 +297,7 @@ end
 --------------------------------------------------------------------------------
 -- loop management
 
-function stoploop()
-    druidraw.loop_exit_early()
-end
+stop_loop = druidraw.stop_loop
 
 function timer(t, fn)
     checktype(t,  "number",   "t")
