@@ -24,6 +24,14 @@ static int bind_log_set_level(lua_State *L) {
 
     int level = level_correspondence[ luaL_checkoption(L, 1, NULL, level_names) ];
 
+    if ( level == -1 ) {
+        // someone actually *chose* "unknown"
+        luaL_where(L, 1);
+        lua_pushliteral(L, "Unknown logging level");
+        lua_concat(L, 2);
+        lua_error(L);
+    }
+
     logger_set_level(level);
 
     return 0;
