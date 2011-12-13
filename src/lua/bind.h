@@ -5,12 +5,15 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+// these functions add their functions to the table given as the only argument
 int bind_socket(lua_State *L); // bind-socket.c 
 int bind_timer(lua_State *L);  // bind-timer.c 
 int bind_logger(lua_State *L); // bind-logger.c
 int bind_bdevs(lua_State *L);  // bind-bdevs.c
 
-int bind_druidraw(lua_State *L); // bind.c
+// these functions modify the global state to load
+int bind_druidraw(lua_State *L);  // bind.c
+int bind_porcelain(lua_State *L); // bind-porcelain.c
 
 // helpers for the bindings themselves
 static inline void require_atleast(lua_State *L, int ct) {

@@ -1,5 +1,4 @@
 #include "lua/bind.h"
-#include "lua/porcelain.h"
 #include "loop.h"
 #include "logger.h"
 
@@ -57,7 +56,8 @@ int main(int argc, char **argv) {
     lua_pushcfunction(L, bind_druidraw);
     lua_call(L, 0, 0);
 
-    bind_druid_porcelain(L);
+    lua_pushcfunction(L, bind_porcelain);
+    lua_call(L, 0, 0);
 
     lua_gc(L, LUA_GCCOLLECT, 0);
 

@@ -62,7 +62,7 @@ env.Object( 'obj/lua/bind-timer.o', 'src/lua/bind-timer.c' )
 env.Object( 'obj/lua/bind-logger.o', 'src/lua/bind-logger.c' )
 
 env.File2H( 'src/lua/AUTOGEN-porcelain-data.h', 'src/lua/druid.lua' )
-Depends(env.Object( 'obj/lua/porcelain.o', 'src/lua/porcelain.c' ), 'src/lua/AUTOGEN-porcelain-data.h')
+Depends(env.Object( 'obj/lua/bind-porcelain.o', 'src/lua/bind-porcelain.c' ), 'src/lua/AUTOGEN-porcelain-data.h')
 
 env.Object( 'obj/tests/gf_arithmetic.o', 'src/tests/gf_arithmetic.c' )
 env.Object( 'obj/tests/rs.o', 'src/tests/rs.c' )
@@ -82,7 +82,7 @@ env.Program( 'prog/druid',
      'obj/lua/bind-timer.o',
      'obj/lua/bind-socket.o',
      'obj/lua/bind-logger.o',
-     'obj/lua/porcelain.o',
+     'obj/lua/bind-porcelain.o',
 
      'obj/bdev.o',
      'obj/crc.o',
