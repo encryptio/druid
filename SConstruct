@@ -134,6 +134,7 @@ luaTest("verify")
 luaTest("stripe")
 luaTest("lazyzero")
 luaTest("tcp-client-errors")
+luaTest("logger")
 
 # "expect" tests
 
