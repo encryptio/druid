@@ -298,13 +298,7 @@ end
 -- loop management
 
 stop_loop = druidraw.stop_loop
-
-function timer(t, fn)
-    checktype(t,  "number",   "t")
-    checktype(fn, "function", "fn")
-
-    druidraw.loop_add_timer(t, fn)
-end
+timer     = druidraw.timer
 
 --------------------------------------------------------------------------------
 -- sockets
