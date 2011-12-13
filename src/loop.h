@@ -13,6 +13,7 @@ void loop_exit_early(void);
 
 typedef void (*loop_timer_cb)(void *data);
 void loop_add_timer(double in, loop_timer_cb cb, void *data);
+void loop_do_repeatedly_whenever(loop_timer_cb cb, void *data);
 
 typedef void (*loop_error_cb)(int err, struct loop_sockhandle *h, void *data);
 typedef void (*loop_connect_cb)(struct loop_sockhandle *h, void *data);

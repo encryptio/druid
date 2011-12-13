@@ -1,5 +1,6 @@
 #include "loop.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -240,6 +241,22 @@ BAD_END:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static loop_timer_cb *whenever_fns = NULL;
+static void **whenever_datas       = NULL;
+static int whenever_fns_count      = 0;
+
+void loop_do_repeatedly_whenever(loop_timer_cb cb, void *data) {
+    whenever_fns_count++;
+
+    if ( (whenever_fns = realloc(whenever_fns, whenever_fns_count*sizeof(loop_timer_cb))) == NULL )
+        err(1, "Couldn't realloc space for %d whenever functions", whenever_fns_count);
+    if ( (whenever_datas = realloc(whenever_datas, whenever_fns_count*sizeof(void *))) == NULL )
+        err(1, "Couldn't realloc space for %d whenever datas", whenever_fns_count);
+
+    whenever_fns[whenever_fns_count-1] = cb;
+    whenever_datas[whenever_fns_count-1] = data;
+}
+
 void loop_setup(void) {
     event_set_log_callback(loop_log_cb);
     event_set_fatal_callback(loop_fatal_cb);
@@ -254,12 +271,29 @@ void loop_setup(void) {
     logger(LOG_JUNK, "loop", "Using libevent backend %s", event_base_get_method(base));
 }
 
+static bool loop_exiting_early = false;
 void loop_exit_early(void) {
     event_base_loopbreak(base);
+    loop_exiting_early = true;
 }
 
 void loop_until_done(void) {
-    event_base_loop(base, 0);
+    while ( !loop_exiting_early ) {
+        int ret = event_base_loop(base, EVLOOP_ONCE);
+
+        if ( ret == -1 ) {
+            logger(LOG_ERR, "loop", "event_base_loop returned -1");
+            loop_exiting_early = true;
+            break;
+        } else if ( ret == 1 ) {
+            // no events
+            break;
+        }
+
+        for (int i = 0; i < whenever_fns_count; i++)
+            whenever_fns[i](whenever_datas[i]);
+    }
+    loop_exiting_early = false;
 }
 
 void loop_teardown(void) {
