@@ -776,6 +776,7 @@ static int bind_loop_tcp_connect(lua_State *L) {
     luaL_checktype(L, 5, LUA_TFUNCTION);
 
     luaL_argcheck(L, port >= 0 && port <= 65535, 2, "Port is out of range");
+    luaL_argcheck(L, strlen(host) > 0, 1, "Hostname is empty");
 
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
