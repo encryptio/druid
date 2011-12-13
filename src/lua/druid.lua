@@ -13,6 +13,7 @@ local math = math
 local string = string
 local ipairs = ipairs
 local unpack = unpack
+local druid = druid
 
 _G.druidraw = nil -- keep users from stumbling upon this
 setfenv(1, druid)
@@ -306,5 +307,10 @@ function timer(t, fn)
 
     druidraw.loop_add_timer(t, fn)
 end
+
+--------------------------------------------------------------------------------
+-- sockets
+
+druid.tcp_connect = druidraw.loop_tcp_connect
 
 return druid
