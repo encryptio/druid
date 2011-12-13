@@ -347,46 +347,6 @@ static int bind_encrypt_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#include "layers/nbd.h"
-
-static int bind_nbd_create(lua_State *L) {
-    require_exactly(L, 2);
-
-    if ( !lua_islightuserdata(L, 2) )
-        return luaL_argerror(L, 2, "not a light userdata");
-
-    int port = luaL_checkint(L, 1);
-    struct bdev *dev = lua_touserdata(L, 2);
-    lua_pop(L, 2);
-
-    if ( port < 2 || port > 65535 )
-        return luaL_argerror(L, 1, "port is out of range");
-
-    struct nbd_server *srv = nbd_create(port, dev);
-
-    if ( srv ) lua_pushlightuserdata(L, srv);
-    else       lua_pushnil(L);
-
-    return 1;
-}
-
-static int bind_nbd_listenloop(lua_State *L) {
-    require_exactly(L, 1);
-
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct nbd_server *srv = lua_touserdata(L, 1);
-    lua_pop(L, 1);
-
-    nbd_listenloop(srv);
-
-    // never reaches here, but whatever
-
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 #include "layers/slice.h"
 
 static int bind_slice_open(lua_State *L) {
@@ -914,9 +874,6 @@ void bind_druidraw(lua_State *L) {
 
     BIND(encrypt_create);
     BIND(encrypt_open);
-
-    BIND(nbd_create);
-    BIND(nbd_listenloop);
 
     BIND(slice_open);
 
