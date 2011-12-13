@@ -2,10 +2,13 @@
 
 #include "logger.h"
 
-static int bind_logger_fn(lua_State *L) {
+static const char *level_names[] = { "junk", "info", "warn", "err", "all", "none", "unknown", NULL };
+static const int level_correspondence[] = { LOG_JUNK, LOG_INFO, LOG_WARN, LOG_ERR, LOG_ALL, LOG_NONE, -1 };
+
+static int bind_log_fn(lua_State *L) {
     require_exactly(L, 3);
 
-    int level = luaL_checkint(L, 1);
+    int level = level_correspondence[ luaL_checkoption(L, 1, "unknown", level_names) ];
     const char *module = luaL_checkstring(L, 2);
     const char *str    = luaL_checkstring(L, 3);
 
@@ -14,20 +17,12 @@ static int bind_logger_fn(lua_State *L) {
     return 0;
 }
 
-static int bind_logger_set_output(lua_State *L) {
+// TODO: bind logger_set_output sanely
+
+static int bind_log_set_level(lua_State *L) {
     require_exactly(L, 1);
 
-    int fd = luaL_checkint(L, 1);
-
-    logger_set_output(fd);
-
-    return 0;
-}
-
-static int bind_logger_set_level(lua_State *L) {
-    require_exactly(L, 1);
-
-    int level = luaL_checkint(L, 1);
+    int level = level_correspondence[ luaL_checkoption(L, 1, NULL, level_names) ];
 
     logger_set_level(level);
 
@@ -39,9 +34,8 @@ int bind_logger(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     luaL_Reg reg[] = {
-        { "logger", bind_logger_fn },
-        { "logger_set_output", bind_logger_set_output },
-        { "logger_set_level", bind_logger_set_level },
+        { "log", bind_log_fn },
+        { "log_set_level", bind_log_set_level },
         { NULL, NULL }
     };
 
