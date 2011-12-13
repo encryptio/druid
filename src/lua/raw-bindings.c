@@ -775,13 +775,7 @@ static int bind_loop_tcp_connect(lua_State *L) {
     luaL_checktype(L, 4, LUA_TFUNCTION);
     luaL_checktype(L, 5, LUA_TFUNCTION);
 
-    if ( port < 0 || port > 65535 ) {
-        lua_pushliteral(L, "Port ");
-        lua_pushinteger(L, port);
-        lua_pushliteral(L, " is out of range [0..65535]");
-        lua_concat(L, 3);
-        lua_error(L);
-    }
+    luaL_argcheck(L, port >= 0 && port <= 65535, 2, "Port is out of range");
 
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
