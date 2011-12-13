@@ -312,5 +312,9 @@ end
 -- sockets
 
 druid.tcp_connect = druidraw.loop_tcp_connect
+-- tcp_connect(host, port, errcb, conncb, readcb)
+-- callbacks are called with the socket as the first argument
+-- in the error callback, second argument is the error code (will change)
+-- in the read callback, second argument is the data that has been read
 
 return druid
