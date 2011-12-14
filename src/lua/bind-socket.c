@@ -279,7 +279,7 @@ int bind_socket(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     luaL_Reg reg[] = {
-        { "loop_tcp_connect", bind_loop_tcp_connect },
+        { "tcp_connect", bind_loop_tcp_connect },
         { NULL, NULL }
     };
 
