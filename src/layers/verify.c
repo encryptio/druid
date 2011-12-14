@@ -13,6 +13,8 @@
 /*
  * verification layer, using crc32
  *
+ * there is no header information, the all-zero device is valid.
+ *
  * inserts hash blocks in intervals in the device below it,
  * verifies when reading and updates when writing.
  *
