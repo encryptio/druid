@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
+#include <err.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -31,41 +32,72 @@ static void gc_loop_fn(void *data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool run_interactive = false;
+static bool interactive_loop_running = false;
 
-static void interactive_loop(lua_State *L) {
-    if ( !isatty(fileno(stdout)) ) {
-        fprintf(stderr, "Can't open an interactive shell when stdout is not a tty");
-        exit(1);
+static void end_interactive_loop(void);
+
+// pfft, non-reentrant readline crap
+lua_State *lua_state_used_for_readline = NULL;
+static void got_line(char *line) {
+    if ( line == NULL ) {
+        // EOF
+        end_interactive_loop();
+        return;
     }
 
-    char *s;
-    while ( (s = readline("druid> ")) != NULL ) {
-        add_history(s);
+    lua_State *L = lua_state_used_for_readline;
+    assert(L != NULL);
 
-        if ( luaL_dostring(L, s) ) {
-            fprintf(stderr, "%s\n", luaL_checkstring(L, -1));
-            lua_pop(L, 1);
-        }
+    if ( strlen(line) )
+        add_history(line);
 
-        lua_gc(L, LUA_GCCOLLECT, 0);
+    if ( luaL_dostring(L, line) ) {
+        fprintf(stderr, "%s\n", luaL_checkstring(L, -1));
+        lua_pop(L, 1);
     }
-    
-    // go to the beginning of the line and clear it
-    fprintf(stdout, "\r\033[K");
 }
+
+static void stdin_callback_fn(void *data) {
+    rl_callback_read_char();
+}
+
+static struct loop_watcher *watcher = NULL;
+static void start_interactive_loop(lua_State *L) {
+    assert(!interactive_loop_running);
+
+    // TODO: should open /dev/tty?
+    if ( !isatty(fileno(stdout)) || !isatty(fileno(stdin)) )
+        errx(1, "Can't open an interactive shell when stdin or stdout are not a tty");
+
+    lua_state_used_for_readline = L;
+    rl_callback_handler_install("druid> ", got_line);
+    watcher = loop_watch_fd_for_reading(0, stdin_callback_fn, NULL);
+    assert(watcher);
+    interactive_loop_running = true;
+}
+
+static void end_interactive_loop(void) {
+    if ( interactive_loop_running ) {
+        rl_callback_handler_remove();
+        loop_stop_watching(watcher);
+        watcher = NULL;
+
+        // go to the beginning of the line and clear it
+        fprintf(stdout, "\r\033[K");
+
+        interactive_loop_running = false;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 static int runloop(lua_State *L) {
     lua_pop(L, 1); // pop the userdata from lua_cpcall
 
     loop_until_done();
 
-    // TODO: make this work well with the event loop
-    if ( run_interactive )
-        interactive_loop(L);
-
     return 0;
-}
-
+} 
 int main(int argc, char **argv) {
     lua_State *L = luaL_newstate();
     assert(L);
@@ -104,10 +136,16 @@ int main(int argc, char **argv) {
     if ( argc == 1 )
         run_interactive = true;
 
+    if ( run_interactive )
+        start_interactive_loop(L);
+
     if ( lua_cpcall(L, runloop, NULL) ) {
         logger(LOG_ERR, "main", "Uncaught Lua error after main loop started: %s", lua_tostring(L, -1));
         lua_pop(L, 1);
     }
+
+    if ( run_interactive )
+        end_interactive_loop();
 
     lua_gc(L, LUA_GCCOLLECT, 0);
     lua_close(L);
