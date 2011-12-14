@@ -253,27 +253,16 @@ static int bind_loop_tcp_connect(lua_State *L) {
 
         lua_pushliteral(L, "__index");
         if ( luaL_newmetatable(L, "druid socket methods") ) {
-            int table = lua_gettop(L);
+            luaL_Reg fns[] = {
+                { "write", bind_loop_sock_write },
+                { "close", bind_loop_sock_close },
+                { "get_hostname", bind_loop_sock_get_hostname },
+                { "get_port", bind_loop_sock_get_port },
+                { "tostring", bind_loop_sock_tostring },
+                { NULL, NULL }
+            };
 
-            lua_pushliteral(L, "write");
-            lua_pushcfunction(L, bind_loop_sock_write);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "close");
-            lua_pushcfunction(L, bind_loop_sock_close);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "get_hostname");
-            lua_pushcfunction(L, bind_loop_sock_get_hostname);
-            lua_settable(L, table);
-
-            lua_pushliteral(L, "get_port");
-            lua_pushcfunction(L, bind_loop_sock_get_port);
-            lua_settable(L, table);
-            
-            lua_pushliteral(L, "tostring");
-            lua_pushcfunction(L, bind_loop_sock_tostring);
-            lua_settable(L, table);
+            luaL_register(L, NULL, fns);
         }
         lua_settable(L, table);
     }
