@@ -5,6 +5,7 @@
 #include <unistd.h> // for size_t
 
 struct loop_sockhandle;
+struct loop_watcher;
 
 void loop_setup(void);
 void loop_teardown(void);
@@ -29,5 +30,8 @@ size_t loop_sock_peek(struct loop_sockhandle *h, uint8_t *into, size_t want);
 void loop_sock_drop(struct loop_sockhandle *h, size_t drop);
 void loop_sock_write(struct loop_sockhandle *h, const uint8_t *from, size_t send);
 void loop_sock_close(struct loop_sockhandle *h);
+
+struct loop_watcher *loop_watch_fd_for_reading(int fd, loop_timer_cb cb, void *data);
+void loop_stop_watching(struct loop_watcher *w);
 
 #endif

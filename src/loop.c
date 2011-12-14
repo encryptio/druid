@@ -241,6 +241,47 @@ BAD_END:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+struct loop_watcher {
+    int fd;
+    loop_timer_cb cb;
+    void *cb_data;
+
+    struct event *ev;
+    bool active;
+};
+
+static void loop_watch_fd_cb(evutil_socket_t fd, short what, void *data) {
+    struct loop_watcher *w = data;
+    w->cb(w->cb_data);
+}
+
+struct loop_watcher *loop_watch_fd_for_reading(int fd, loop_timer_cb cb, void *data) {
+    struct loop_watcher *w;
+    if ( (w = malloc(sizeof(struct loop_watcher))) == NULL )
+        err(1, "Couldn't malloc space for loop_watcher");
+
+    w->fd      = fd;
+    w->cb      = cb;
+    w->cb_data = data;
+    w->active  = true;
+
+    w->ev = event_new(base, fd, EV_READ|EV_PERSIST, loop_watch_fd_cb, w);
+    assert(w->ev);
+
+    event_add(w->ev, NULL);
+
+    return w;
+}
+
+void loop_stop_watching(struct loop_watcher *w) {
+    assert(w->active);
+
+    event_free(w->ev);
+    w->active = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static loop_timer_cb *whenever_fns = NULL;
 static void **whenever_datas       = NULL;
 static int whenever_fns_count      = 0;
