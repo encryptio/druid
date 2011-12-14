@@ -23,7 +23,7 @@ int bind_druidraw(lua_State *L) {
         lua_call(L, 1, 0);
     }
 
-    lua_setglobal(L, "druidraw");
+    lua_setglobal(L, "druid");
 
     return 0;
 }
