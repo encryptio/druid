@@ -420,6 +420,39 @@ static int bind_lazyzero_open(lua_State *L) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#include "layers/xor.h"
+
+static int bind_xor_open(lua_State *L) {
+    require_atleast(L, 3);
+
+    // TODO: allow argument to be a table of the devices
+    
+    int count = lua_gettop(L);
+
+    struct bdev **devices;
+    if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
+        err(1, "Couldn't allocate space for devices list");
+
+    for (int i = 0; i < count; i++) {
+        if ( !lua_islightuserdata(L, i+1) ) {
+            free(devices);
+            return luaL_argerror(L, i+1, "not a light userdata");
+        }
+        devices[i] = lua_touserdata(L, i+1);
+    }
+
+    lua_pop(L, count);
+
+    void *p = xor_open(devices, count);
+    if ( p ) lua_pushlightuserdata(L, p);
+    else     lua_pushnil(L);
+
+    free(devices);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // finalizer for bdevs
 
 static int bind_close_on_gc_finalizer(lua_State *L) {
@@ -487,6 +520,8 @@ int bind_bdevs(lua_State *L) {
 
         { "lazyzero_create", bind_lazyzero_create },
         { "lazyzero_open", bind_lazyzero_open },
+
+        { "xor_open", bind_xor_open },
 
         { "close_on_gc", bind_close_on_gc },
 

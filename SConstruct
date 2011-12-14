@@ -48,6 +48,7 @@ env.Object( 'obj/layers/slice.o', 'src/layers/slice.c' )
 env.Object( 'obj/layers/stripe.o', 'src/layers/stripe.c' )
 env.Object( 'obj/layers/concat.o', 'src/layers/concat.c' )
 env.Object( 'obj/layers/lazyzero.o', 'src/layers/lazyzero.c' )
+env.Object( 'obj/layers/xor.o', 'src/layers/xor.c' )
 env.Object( 'obj/bdev.o', 'src/bdev.c' )
 env.Object( 'obj/crc.o', 'src/crc.c' )
 env.Object( 'obj/block-cache.o', 'src/block-cache.c' )
@@ -97,7 +98,8 @@ env.Program( 'prog/druid',
      'obj/layers/slice.o',
      'obj/layers/stripe.o',
      'obj/layers/verify.o',
-     'obj/layers/lazyzero.o'] )
+     'obj/layers/lazyzero.o',
+     'obj/layers/xor.o'] )
 
 # tests
 
@@ -136,6 +138,7 @@ luaTest("lazyzero")
 luaTest("tcp-client-errors")
 luaTest("logger")
 luaTest("timers-dont-leak")
+luaTest("xor")
 
 # "expect" tests
 

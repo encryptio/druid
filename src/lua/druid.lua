@@ -232,6 +232,21 @@ function lazyzero(dev)
     return maybe_wrap_bdev(druidraw.lazyzero_open(dev.io), {dev})
 end
 
+function xor(...)
+    local data_found = {}
+    local raw_args = {}
+    for _,v in ipairs(arg) do
+        checktype(v, "device")
+        raw_args[#raw_args+1] = v.io
+        if data_found[v.io] then
+            error("Can't xor a device with itself", 2)
+        end
+        data_found[v.io] = true
+    end
+
+    return maybe_wrap_bdev(druidraw.xor_open(unpack(raw_args)), arg)
+end
+
 function zero(dev, progress)
     checktype(dev, "device")
     -- progress optional, defaults to false
