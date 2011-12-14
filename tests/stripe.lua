@@ -10,8 +10,8 @@ test.ok(r2:write_bytes(0, "efgh"))
 
 local s = druid.stripe(r1, r2)
 test.type(s, "device")
-test.eq(s.block_count, 8)
-test.eq(s.block_size, r1.block_size)
+test.eq(s:block_count(), 8)
+test.eq(s:block_size(), r1:block_size())
 test.eq(s:read_bytes(0,8), "aebfcgdh")
 
 test.ok(s:write_bytes(0,"AB"))
@@ -35,8 +35,8 @@ test.ok(r3:write_bytes(0,"ijkl"))
 
 s = druid.stripe(r1, r2, r3)
 test.type(s, "device")
-test.eq(s.block_count, 12)
-test.eq(s.block_size, r1.block_size)
+test.eq(s:block_count(), 12)
+test.eq(s:block_size(), r1:block_size())
 
 test.eq(s:read_bytes(0,12), "ABiCDjEFkGHl")
 
@@ -55,8 +55,8 @@ s = druid.stripe(r1,r2,r3,r4)
 druid.log_set_level('info')
 test.type(s, "device")
 
-test.eq(s.block_count, 16)
-test.eq(s.block_size, 1)
+test.eq(s:block_count(), 16)
+test.eq(s:block_size(), 1)
 
 test.eq(s:read_bytes(0,16), "ABC1DEF2GHI3JKL4")
 test.ok(s:write_bytes(0, "ABCDEFGHIJKLMNOP"))
@@ -71,8 +71,8 @@ s = druid.stripe(r4,r1)
 druid.log_set_level('info')
 test.type(s, "device")
 
-test.eq(s.block_count, 8)
-test.eq(s.block_size, 1)
+test.eq(s:block_count(), 8)
+test.eq(s:block_size(), 1)
 test.eq(s:read_bytes(0,8), "DAHELIPM")
 
 test.doeserr(function () druid.stripe() end)

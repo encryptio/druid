@@ -1,21 +1,35 @@
 #include "lua/bind.h"
 
+#include <math.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <err.h>
 
-////////////////////////////////////////////////////////////////////////////////
 #include "bdev.h"
+
+struct bdev_data {
+    struct bdev *dev;
+
+    // references to other bdevs
+    int *refs;
+    int ref_count;
+};
+
+static uint64_t luaL_checkuint64(lua_State *L, int index) {
+    lua_Number v = luaL_checknumber(L, index);
+    luaL_argcheck(L, (fabs(v-round(v)) < 0.000001), index, "is not an integer");
+    return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 static int bind_bdev_get_block_size(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    lua_pushnumber(L, dev->block_size);
+    lua_pushnumber(L, bdd->dev->block_size);
 
     return 1;
 }
@@ -23,13 +37,10 @@ static int bind_bdev_get_block_size(lua_State *L) {
 static int bind_bdev_get_block_count(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    lua_pushnumber(L, dev->block_count);
+    lua_pushnumber(L, bdd->dev->block_count);
 
     return 1;
 }
@@ -37,19 +48,23 @@ static int bind_bdev_get_block_count(lua_State *L) {
 static int bind_bdev_read_bytes(lua_State *L) {
     require_exactly(L, 3);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    uint64_t start        = luaL_checkuint64(L, 2);
+    uint64_t len          = luaL_checkuint64(L, 3);
 
-    struct bdev *dev = lua_touserdata(L, 1);
-    uint64_t start   = luaL_checknumber(L, 2);
-    uint64_t len     = luaL_checknumber(L, 3);
+    uint64_t size = bdd->dev->block_count * bdd->dev->block_size;
+
+    luaL_argcheck(L, (luaL_checknumber(L,2) >= 0), 2, "start cannot be negative");
+    luaL_argcheck(L, (luaL_checknumber(L,3) >= 0), 3, "length cannot be negative");
+    luaL_argcheck(L, (start < size && start+len <= size), 2, "Can't read past the end of the device");
+    luaL_argcheck(L, (len > 0), 3, "length cannot be zero");
     lua_pop(L, 3);
 
     uint8_t *data;
     if ( (data = malloc(len)) == NULL )
         err(1, "Couldn't allocate space for data read");
 
-    if ( dev->read_bytes(dev, start, len, data) )
+    if ( bdd->dev->read_bytes(bdd->dev, start, len, data) )
         lua_pushlstring(L, (char*)data, len);
     else
         lua_pushnil(L);
@@ -62,16 +77,20 @@ static int bind_bdev_read_bytes(lua_State *L) {
 static int bind_bdev_write_bytes(lua_State *L) {
     require_exactly(L, 3);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev    = lua_touserdata(L, 1);
-    uint64_t start      = luaL_checknumber(L, 2);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    uint64_t start      = luaL_checkuint64(L, 2);
     size_t len;
+    luaL_checktype(L, 3, LUA_TSTRING);
     const uint8_t *data = (const uint8_t *) luaL_checklstring(L, 3, &len);
 
-    bool ret = dev->write_bytes(dev, start, len, data);
+    uint64_t size = bdd->dev->block_count * bdd->dev->block_size;
+
+    luaL_argcheck(L, (luaL_checknumber(L,2) >= 0), 2, "start cannot be negative");
+    luaL_argcheck(L, (start < size && start+len <= size), 2, "Can't write past the end of the device");
+    luaL_argcheck(L, (len > 0), 3, "string length cannot be zero");
     lua_pop(L, 3);
+
+    bool ret = bdd->dev->write_bytes(bdd->dev, start, len, data);
 
     lua_pushboolean(L, ret);
 
@@ -81,19 +100,19 @@ static int bind_bdev_write_bytes(lua_State *L) {
 static int bind_bdev_read_block(lua_State *L) {
     require_exactly(L, 2);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    uint64_t which        = luaL_checkuint64(L, 2);
 
-    struct bdev *dev = lua_touserdata(L, 1);
-    uint64_t which   = luaL_checknumber(L, 2);
+    luaL_argcheck(L, (luaL_checknumber(L,2) >= 0), 2, "Can't read before the start of the device");
+    luaL_argcheck(L, (which < bdd->dev->block_count), 2, "Can't read after the end of the device");
     lua_pop(L, 2);
 
     uint8_t *data;
-    if ( (data = malloc(dev->block_size)) == NULL )
+    if ( (data = malloc(bdd->dev->block_size)) == NULL )
         err(1, "Couldn't allocate space for block read");
 
-    if ( dev->read_block(dev, which, data) )
-        lua_pushlstring(L, (char*)data, dev->block_size);
+    if ( bdd->dev->read_block(bdd->dev, which, data) )
+        lua_pushlstring(L, (char*)data, bdd->dev->block_size);
     else
         lua_pushnil(L);
 
@@ -105,27 +124,18 @@ static int bind_bdev_read_block(lua_State *L) {
 static int bind_bdev_write_block(lua_State *L) {
     require_exactly(L, 3);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev    = lua_touserdata(L, 1);
-    uint64_t which      = luaL_checknumber(L, 2);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    uint64_t which        = luaL_checkuint64(L, 2);
     size_t len;
-    const uint8_t *data = (const uint8_t *) luaL_checklstring(L, 3, &len);
+    luaL_checktype(L, 3, LUA_TSTRING);
+    const uint8_t *data   = (const uint8_t *) luaL_checklstring(L, 3, &len);
 
-    if ( len != dev->block_size ) {
-        luaL_where(L, 1);
-        lua_pushliteral(L, "Wrong block size (got ");
-        lua_pushnumber(L, len);
-        lua_pushliteral(L, " bytes, expected ");
-        lua_pushnumber(L, dev->block_size);
-        lua_pushliteral(L, "bytes)");
-        lua_concat(L, 6);
-        lua_error(L);
-    }
-
-    bool ret = dev->write_block(dev, which, data);
+    luaL_argcheck(L, (luaL_checknumber(L,2) >= 0), 2, "Can't write before the start of the device");
+    luaL_argcheck(L, (which < bdd->dev->block_count), 2, "Can't write after the end of the device");
+    luaL_argcheck(L, (len == bdd->dev->block_size), 3, "Can't write a string that isn't the length of the block size");
     lua_pop(L, 3);
+
+    bool ret = bdd->dev->write_block(bdd->dev, which, data);
 
     lua_pushboolean(L, ret);
 
@@ -135,13 +145,19 @@ static int bind_bdev_write_block(lua_State *L) {
 static int bind_bdev_close(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    dev->close(dev);
+    if ( bdd->dev )
+        bdd->dev->close(bdd->dev);
+    bdd->dev = NULL;
+
+    if ( bdd->refs ) {
+        for (int i = 0; i < bdd->ref_count; i++)
+            luaL_unref(L, LUA_REGISTRYINDEX, bdd->refs[i]);
+        free(bdd->refs);
+        bdd->ref_count = 0;
+    }
 
     return 0;
 }
@@ -149,13 +165,10 @@ static int bind_bdev_close(lua_State *L) {
 static int bind_bdev_clear_caches(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    dev->clear_caches(dev);
+    bdd->dev->clear_caches(bdd->dev);
 
     return 0;
 }
@@ -163,13 +176,10 @@ static int bind_bdev_clear_caches(lua_State *L) {
 static int bind_bdev_flush(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    dev->flush(dev);
+    bdd->dev->flush(bdd->dev);
 
     return 0;
 }
@@ -177,15 +187,56 @@ static int bind_bdev_flush(lua_State *L) {
 static int bind_bdev_sync(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    dev->sync(dev);
+    bdd->dev->sync(bdd->dev);
 
     return 0;
+}
+
+static int bind_bdev_wrap(lua_State *L, struct bdev *dev, int *refs, int ref_count) {
+    if ( dev == NULL ) {
+        free(refs);
+        lua_pushnil(L);
+        return 1;
+    }
+
+    struct bdev_data *bdd = lua_newuserdata(L, sizeof(struct bdev_data));
+    assert(bdd);
+    int userdata = lua_gettop(L);
+
+    bdd->dev = dev;
+    bdd->refs = refs;
+    bdd->ref_count = ref_count;
+
+    if ( luaL_newmetatable(L, "druid bdev") ) {
+        int table = lua_gettop(L);
+
+        luaL_Reg fns[] = {
+            { "__gc", bind_bdev_close },
+            { "block_size", bind_bdev_get_block_size },
+            { "block_count", bind_bdev_get_block_count },
+            { "read_bytes", bind_bdev_read_bytes },
+            { "write_bytes", bind_bdev_write_bytes },
+            { "read_block", bind_bdev_read_block },
+            { "write_block", bind_bdev_write_block },
+            { "clear_caches", bind_bdev_clear_caches },
+            { "flush", bind_bdev_flush },
+            { "sync", bind_bdev_sync },
+            { NULL, NULL }
+        };
+
+        luaL_register(L, NULL, fns);
+
+        lua_pushliteral(L, "__index");
+        lua_pushvalue(L, table);
+        lua_settable(L, table);
+    }
+    
+    lua_setmetatable(L, userdata);
+
+    return 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,47 +245,39 @@ static int bind_bdev_sync(lua_State *L) {
 static int bind_bio_create_malloc(lua_State *L) {
     require_exactly(L, 2);
 
-    uint64_t block_size = luaL_checknumber(L, 1);
-    size_t blocks       = luaL_checknumber(L, 2);
+    uint64_t block_size = luaL_checkuint64(L, 1);
+    size_t blocks       = luaL_checkuint64(L, 2);
     lua_pop(L, 2);
 
-    void *p = bio_create_malloc(block_size, blocks);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
+    luaL_argcheck(L, (block_size >= 1),         1, "Unreasonable block size");
+    luaL_argcheck(L, (block_size <= (1 << 20)), 1, "Unreasonable block size");
+    luaL_argcheck(L, (blocks     >= 1),         2, "Zero block count");
 
-    return 1;
+    return bind_bdev_wrap( L, bio_create_malloc(block_size, blocks), NULL, 0 );
 }
 
 static int bind_bio_create_mmap(lua_State *L) {
     require_exactly(L, 4);
 
-    uint64_t block_size = luaL_checknumber(L, 1);
-    int fd              = luaL_checknumber(L, 2);
-    size_t blocks       = luaL_checknumber(L, 3);
-    off_t offset        = luaL_checknumber(L, 4);
+    uint64_t block_size = luaL_checkuint64(L, 1);
+    int fd              = luaL_checkuint64(L, 2);
+    size_t blocks       = luaL_checkuint64(L, 3);
+    off_t offset        = luaL_checkuint64(L, 4);
     lua_pop(L, 4);
 
-    void *p = bio_create_mmap(block_size, fd, blocks, offset);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
-
-    return 1;
+    return bind_bdev_wrap( L, bio_create_mmap(block_size, fd, blocks, offset), NULL, 0 );
 }
 
 static int bind_bio_create_posixfd(lua_State *L) {
     require_exactly(L, 4);
 
-    uint64_t block_size = luaL_checknumber(L, 1);
-    int fd              = luaL_checknumber(L, 2);
-    size_t blocks       = luaL_checknumber(L, 3);
-    off_t offset        = luaL_checknumber(L, 4);
+    uint64_t block_size = luaL_checkuint64(L, 1);
+    int fd              = luaL_checkuint64(L, 2);
+    size_t blocks       = luaL_checkuint64(L, 3);
+    off_t offset        = luaL_checkuint64(L, 4);
     lua_pop(L, 4);
 
-    void *p = bio_create_posixfd(block_size, fd, blocks, offset);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
-
-    return 1;
+    return bind_bdev_wrap( L, bio_create_posixfd(block_size, fd, blocks, offset), NULL, 0 );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,30 +287,32 @@ static int bind_concat_open(lua_State *L) {
     require_atleast(L, 1);
 
     // TODO: allow argument to be a table of the devices
+    // TODO: disallow duplicate devices
     
     int count = lua_gettop(L);
 
+    int *refs;
+    if ( (refs = malloc(sizeof(int) * count)) == NULL )
+        err(1, "Couldn't allocate space for references list");
     struct bdev **devices;
     if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
         err(1, "Couldn't allocate space for devices list");
 
     for (int i = 0; i < count; i++) {
-        if ( !lua_islightuserdata(L, i+1) ) {
-            free(devices);
-            return luaL_argerror(L, i+1, "not a light userdata");
-        }
-        devices[i] = lua_touserdata(L, i+1);
+        lua_pushvalue(L, i+1);
+        struct bdev_data *bdd = luaL_checkudata(L, -1, "druid bdev");
+        for (int j = 0; j < i; j++)
+            luaL_argcheck(L, (bdd->dev != devices[j]), i+1, "Can't concat a device with itself");
+        refs[i] = luaL_ref(L, LUA_REGISTRYINDEX);
+        devices[i] = bdd->dev;
     }
 
     lua_pop(L, count);
 
-    void *p = concat_open(devices, count);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
-
+    struct bdev *dev = concat_open(devices, count);
     free(devices);
 
-    return 1;
+    return bind_bdev_wrap(L, dev, refs, count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,16 +321,12 @@ static int bind_concat_open(lua_State *L) {
 static int bind_encrypt_create(lua_State *L) {
     require_exactly(L, 2);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     size_t keylen;
     const uint8_t *key = (const uint8_t *) luaL_checklstring(L, 2, &keylen);
 
-    bool ret = encrypt_create(dev, key, keylen);
-
-    lua_pop(L, 2); // here to make sure key is valid above
+    bool ret = encrypt_create(bdd->dev, key, keylen);
+    lua_pop(L, 2); // can't do this earlier
 
     lua_pushboolean(L, ret);
 
@@ -295,21 +336,20 @@ static int bind_encrypt_create(lua_State *L) {
 static int bind_encrypt_open(lua_State *L) {
     require_exactly(L, 2);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *dev = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     size_t keylen;
     const uint8_t *key = (const uint8_t *) luaL_checklstring(L, 2, &keylen);
 
-    struct bdev *ret = encrypt_open(dev, key, keylen);
+    struct bdev *ret = encrypt_open(bdd->dev, key, keylen);
 
-    lua_pop(L, 2);
+    lua_pop(L, 1);
+
+    int *refs;
+    if ( (refs = malloc(sizeof(int))) == NULL )
+        err(1, "Couldn't allocate space for references list");
+    refs[0] = luaL_ref(L, LUA_REGISTRYINDEX);
     
-    if ( ret ) lua_pushlightuserdata(L, ret);
-    else       lua_pushnil(L);
-
-    return 1;
+    return bind_bdev_wrap(L, ret, refs, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,20 +358,22 @@ static int bind_encrypt_open(lua_State *L) {
 static int bind_slice_open(lua_State *L) {
     require_exactly(L, 3);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    uint64_t start        = luaL_checkuint64(L, 2);
+    uint64_t len          = luaL_checkuint64(L, 3);
 
-    struct bdev *base = lua_touserdata(L, 1);
-    uint64_t start    = luaL_checknumber(L, 2);
-    uint64_t len      = luaL_checknumber(L, 3);
-    lua_pop(L, 3);
+    luaL_argcheck(L, (luaL_checknumber(L, 2) >= 0), 2, "Can't open a slice to before the start of the device");
+    luaL_argcheck(L, (start+len <= bdd->dev->block_count), 2, "Can't open a slice to after the end of the device");
+    luaL_argcheck(L, (luaL_checknumber(L, 3) > 0), 3, "Can't open a slice with a non-positive size");
 
-    struct bdev *dev = slice_open(base, start, len);
+    lua_pop(L, 2);
 
-    if ( dev ) lua_pushlightuserdata(L, dev);
-    else       lua_pushnil(L);
+    int *refs;
+    if ( (refs = malloc(sizeof(int))) == NULL )
+        err(1, "Couldn't allocate space for references list");
+    refs[0] = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    return 1;
+    return bind_bdev_wrap( L, slice_open(bdd->dev, start, len), refs, 1 );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,30 +383,32 @@ static int bind_stripe_open(lua_State *L) {
     require_atleast(L, 1);
 
     // TODO: allow argument to be a table of the devices
+    // TODO: disallow duplicate devices
     
     int count = lua_gettop(L);
 
+    int *refs;
+    if ( (refs = malloc(sizeof(int) * count)) == NULL )
+        err(1, "Couldn't allocate space for references list");
     struct bdev **devices;
     if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
         err(1, "Couldn't allocate space for devices list");
 
     for (int i = 0; i < count; i++) {
-        if ( !lua_islightuserdata(L, i+1) ) {
-            free(devices);
-            return luaL_argerror(L, i+1, "not a light userdata");
-        }
-        devices[i] = lua_touserdata(L, i+1);
+        lua_pushvalue(L, i+1);
+        struct bdev_data *bdd = luaL_checkudata(L, -1, "druid bdev");
+        for (int j = 0; j < i; j++)
+            luaL_argcheck(L, (bdd->dev != devices[j]), i+1, "Can't concat a device with itself");
+        refs[i] = luaL_ref(L, LUA_REGISTRYINDEX);
+        devices[i] = bdd->dev;
     }
 
     lua_pop(L, count);
 
-    void *p = stripe_open(devices, count);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
-
+    struct bdev *dev = stripe_open(devices, count);
     free(devices);
 
-    return 1;
+    return bind_bdev_wrap(L, dev, refs, count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,17 +417,14 @@ static int bind_stripe_open(lua_State *L) {
 static int bind_verify_create(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
 
-    struct bdev *base = lua_touserdata(L, 1);
-    lua_pop(L, 1);
+    int *refs;
+    if ( (refs = malloc(sizeof(int))) == NULL )
+        err(1, "Couldn't allocate space for references list");
+    refs[0] = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    struct bdev *ret = verify_create(base);
-    if ( ret ) lua_pushlightuserdata(L, ret);
-    else       lua_pushnil(L);
-
-    return 1;
+    return bind_bdev_wrap( L, verify_create(bdd->dev), refs, 1 );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,13 +433,10 @@ static int bind_verify_create(lua_State *L) {
 static int bind_lazyzero_create(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *base = lua_touserdata(L, 1);
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
     lua_pop(L, 1);
 
-    lua_pushboolean(L, lazyzero_create(base));
+    lua_pushboolean(L, lazyzero_create(bdd->dev));
 
     return 1;
 }
@@ -406,17 +444,14 @@ static int bind_lazyzero_create(lua_State *L) {
 static int bind_lazyzero_open(lua_State *L) {
     require_exactly(L, 1);
 
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
 
-    struct bdev *base = lua_touserdata(L, 1);
-    lua_pop(L, 1);
+    int *refs;
+    if ( (refs = malloc(sizeof(int))) == NULL )
+        err(1, "Couldn't allocate space for references list");
+    refs[0] = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    struct bdev *ret = lazyzero_open(base);
-    if ( ret ) lua_pushlightuserdata(L, ret);
-    else       lua_pushnil(L);
-
-    return 1;
+    return bind_bdev_wrap( L, lazyzero_open(bdd->dev), refs, 1 );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,63 +461,32 @@ static int bind_xor_open(lua_State *L) {
     require_atleast(L, 3);
 
     // TODO: allow argument to be a table of the devices
+    // TODO: disallow duplicate devices
     
     int count = lua_gettop(L);
 
+    int *refs;
+    if ( (refs = malloc(sizeof(int) * count)) == NULL )
+        err(1, "Couldn't allocate space for references list");
     struct bdev **devices;
     if ( (devices = malloc(sizeof(struct bdev *) * count)) == NULL )
         err(1, "Couldn't allocate space for devices list");
 
     for (int i = 0; i < count; i++) {
-        if ( !lua_islightuserdata(L, i+1) ) {
-            free(devices);
-            return luaL_argerror(L, i+1, "not a light userdata");
-        }
-        devices[i] = lua_touserdata(L, i+1);
+        lua_pushvalue(L, i+1);
+        struct bdev_data *bdd = luaL_checkudata(L, -1, "druid bdev");
+        for (int j = 0; j < i; j++)
+            luaL_argcheck(L, (bdd->dev != devices[j]), i+1, "Can't concat a device with itself");
+        refs[i] = luaL_ref(L, LUA_REGISTRYINDEX);
+        devices[i] = bdd->dev;
     }
 
     lua_pop(L, count);
 
-    void *p = xor_open(devices, count);
-    if ( p ) lua_pushlightuserdata(L, p);
-    else     lua_pushnil(L);
-
+    struct bdev *dev = xor_open(devices, count);
     free(devices);
 
-    return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// finalizer for bdevs
-
-static int bind_close_on_gc_finalizer(lua_State *L) {
-    struct bdev **ptr = luaL_checkudata(L, 1, "druid closeongc");
-    lua_pop(L, 1);
-    (*ptr)->close(*ptr);
-    return 0;
-}
-
-static int bind_close_on_gc(lua_State *L) {
-    if ( !lua_islightuserdata(L, 1) )
-        return luaL_argerror(L, 1, "not a light userdata");
-
-    struct bdev *base = lua_touserdata(L, 1);
-    lua_pop(L, 1);
-
-    struct bdev **ptr = lua_newuserdata(L, sizeof(struct bdev *));
-    *ptr = base;
-    int at = lua_gettop(L);
-
-    if ( luaL_newmetatable(L, "druid closeongc") ) {
-        int table = lua_gettop(L);
-        lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, bind_close_on_gc_finalizer);
-        lua_settable(L, table);
-    }
-
-    lua_setmetatable(L, at);
-
-    return 1;
+    return bind_bdev_wrap(L, dev, refs, count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,38 +496,27 @@ int bind_bdevs(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     luaL_Reg reg[] = {
-        { "bdev_get_block_size", bind_bdev_get_block_size },
-        { "bdev_get_block_count", bind_bdev_get_block_count },
-        { "bdev_read_bytes", bind_bdev_read_bytes },
-        { "bdev_write_bytes", bind_bdev_write_bytes },
-        { "bdev_read_block", bind_bdev_read_block },
-        { "bdev_write_block", bind_bdev_write_block },
-        { "bdev_close", bind_bdev_close },
-        { "bdev_clear_caches", bind_bdev_clear_caches },
-        { "bdev_flush", bind_bdev_flush },
-        { "bdev_sync", bind_bdev_sync },
+        { "ram", bind_bio_create_malloc },
 
-        { "bio_create_malloc", bind_bio_create_malloc },
+        // TODO
         { "bio_create_mmap", bind_bio_create_mmap },
         { "bio_create_posixfd", bind_bio_create_posixfd },
 
-        { "concat_open", bind_concat_open },
+        { "concat", bind_concat_open },
 
-        { "encrypt_create", bind_encrypt_create },
-        { "encrypt_open", bind_encrypt_open },
+        { "encrypt_initialize", bind_encrypt_create },
+        { "encrypt", bind_encrypt_open },
 
-        { "slice_open", bind_slice_open },
+        { "slice", bind_slice_open },
 
-        { "stripe_open", bind_stripe_open },
+        { "stripe", bind_stripe_open },
 
-        { "verify_create", bind_verify_create },
+        { "verify", bind_verify_create },
 
-        { "lazyzero_create", bind_lazyzero_create },
-        { "lazyzero_open", bind_lazyzero_open },
+        { "lazyzero_initialize", bind_lazyzero_create },
+        { "lazyzero", bind_lazyzero_open },
 
-        { "xor_open", bind_xor_open },
-
-        { "close_on_gc", bind_close_on_gc },
+        { "xor", bind_xor_open },
 
         { NULL, NULL }
     };

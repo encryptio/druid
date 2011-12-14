@@ -13,9 +13,9 @@ end
 local v = druid.verify(ram)
 test.type(v, "device")
 
-test.ok(v.block_count < ram.block_count)
+test.ok(v:block_count() < ram:block_count())
 
-for i = 0,v.block_count-1 do
+for i = 0,v:block_count()-1 do
     test.ok(v:read_block(i))
 end
 
@@ -35,7 +35,7 @@ v:clear_caches()
 
 test.ok(ram:write_block(0, zeroblock))
 test.eq(v:read_block(0), nil)
-test.eq(v:read_block(v.block_count-1), zeroblock)
+test.eq(v:read_block(v:block_count()-1), zeroblock)
 
 druid.log_set_level('none')
 test.eq(druid.verify(druid.ram(2,8)), nil)

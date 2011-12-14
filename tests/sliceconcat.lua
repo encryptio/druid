@@ -53,12 +53,12 @@ test.eq(ram:read_bytes(0, 8), string.char(0x80, 0x01, 0x82, 0x03, 0x84, 0x85, 0x
 
 local c1 = druid.concat(s1, s2)
 test.type(c1, "device")
-test.eq(c1.block_count, 3)
+test.eq(c1:block_count(), 3)
 test.eq(c1:read_bytes(0,3), string.char(0x80, 0x01, 0x82))
 
 local c2 = druid.concat(s2, s3, s4)
 test.type(c2, "device")
-test.eq(c2.block_count, 7)
+test.eq(c2:block_count(), 7)
 test.eq(c2:read_bytes(0,7), string.char(0x01, 0x82, 0x03, 0x84, 0x85, 0x86, 0x07))
 test.ok(c2:write_bytes(0,string.char(0x81)))
 test.eq(c2:read_bytes(0,1), string.char(0x81))
@@ -67,8 +67,8 @@ test.eq(ram:read_bytes(0,8), string.char(0x80, 0x81, 0x82, 0x03, 0x84, 0x85, 0x8
 
 local c3 = druid.concat(s3)
 test.type(c3, "device")
-test.eq(c3.block_count, s3.block_count)
-test.eq(c3:read_bytes(0,c3.block_count), s3:read_bytes(0,s3.block_count))
+test.eq(c3:block_count(), s3:block_count())
+test.eq(c3:read_bytes(0,c3:block_count()), s3:read_bytes(0,s3:block_count()))
 
 test.doeserr(function () druid.concat() end)
 test.doeserr(function () druid.concat(s1,s1) end)
@@ -76,7 +76,7 @@ test.doeserr(function () druid.concat(s1,s2,s3,s1) end)
 
 local rebuilt = druid.concat(c1, s3, s4)
 test.type(rebuilt, "device")
-test.eq(rebuilt.block_count, 8)
+test.eq(rebuilt:block_count(), 8)
 test.eq(rebuilt:read_bytes(0,8), ram:read_bytes(0,8))
 test.ok(rebuilt:write_bytes(3,string.char(0x83)))
 test.eq(rebuilt:read_bytes(0,8), string.char(0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x07))

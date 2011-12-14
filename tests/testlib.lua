@@ -9,7 +9,8 @@ function test.type(val, ty)
             error("expected an integer (is fractional)", 2)
         end
     elseif ty == "device" then
-        if type(val) ~= "table" or not val.is_bdev then
+        if type(val) ~= "userdata" then
+            -- TODO: other checks?
             error("expected a device (is "..type(val)..")", 2)
         end
     elseif type(val) ~= ty then
