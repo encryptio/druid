@@ -52,3 +52,10 @@ test.doeserr(function() base:write_bytes(2) end)
 test.doeserr(function() base:write_bytes(1, 1) end)
 test.doeserr(function() base:write_bytes(4*8-3, "asdf") end)
 
+druid.log_set_level('warn')
+local zword = string.char(0,0,0,0)
+druid.zero(base)
+for i=0,7 do
+    test.eq(base:read_block(i), zword)
+end
+

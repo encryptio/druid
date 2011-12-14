@@ -232,6 +232,28 @@ function lazyzero(dev)
     return maybe_wrap_bdev(druidraw.lazyzero_open(dev.io), {dev})
 end
 
+function zero(dev, progress)
+    checktype(dev, "device")
+    -- progress optional, defaults to false
+
+    local block_ct = dev.block_count
+    local zblock = ''
+    for i=1,dev.block_size do
+        zblock = zblock .. string.char(0)
+    end
+
+    druid.log('info', 'zero', 'Zeroing device with '..block_ct..' blocks')
+
+    for i=0,block_ct-1 do
+        dev:write_block(i, zblock)
+        if progress and i % 100 == 0 then
+            print("zeroing device "..(i+1).."/"..block_ct)
+        end
+    end
+
+    druid.log('info', 'zero', 'Finished zeroing device')
+end
+
 --------------------------------------------------------------------------------
 -- logger
 
