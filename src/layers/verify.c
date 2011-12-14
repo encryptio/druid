@@ -115,8 +115,13 @@ static bool verify_write_block(struct bdev *self, uint64_t which, const uint8_t 
     uint64_t interior_offset = which % io->hashes_per_block;
 
     if ( io->which_hash_block != needed_hash_block ) {
-        if ( !io->base->read_block(io->base, needed_hash_block, io->hash_block) )
-            return false;
+        if ( !io->base->read_block(io->base, needed_hash_block, io->hash_block) ) {
+            // hash block failed to read, assume it's zeroed - we won't lose
+            // any more data than we've already lost by doing this, and we
+            // continue to write to the drive
+
+            memset(io->hash_block, 0, self->block_size);
+        }
         io->which_hash_block = needed_hash_block;
     }
     
