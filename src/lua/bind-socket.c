@@ -171,6 +171,8 @@ static void bind_loop_connect_cb(struct loop_sockhandle *h, void *data) {
         return;
     }
 
+    sd->state = SOCKET_OPEN;
+
     lua_rawgeti(L, LUA_REGISTRYINDEX, sd->connect_cb_ref);
     lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
     lua_call(L, 1, 0);
