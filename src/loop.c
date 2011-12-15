@@ -177,20 +177,22 @@ static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx)
         if ( h->cb_connect )
             h->cb_connect(h, h->cb_data);
 
-    } else if ( events & (BEV_EVENT_ERROR | BEV_EVENT_EOF) ) {
-        if ( events & BEV_EVENT_ERROR ) {
-            int err = bufferevent_socket_get_dns_error(bev);
-            if ( err )
-                logger(LOG_WARN, "loop", "Couldn't resolve hostname: %s", evutil_gai_strerror(err));
+    } else if ( events & BEV_EVENT_ERROR ) {
+        logger(LOG_WARN, "loop", "Couldn't connect to host: %s", evutil_socket_error_to_string(evutil_socket_geterror(bufferevent_getfd(bev))));
 
-            evdns_refcount_decrement();
-        }
+        int err = bufferevent_socket_get_dns_error(bev);
+        if ( err )
+            logger(LOG_WARN, "loop", "Couldn't resolve hostname: %s", evutil_gai_strerror(err));
 
-        logger(LOG_WARN, "loop", "Couldn't connect to host: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+        evdns_refcount_decrement();
 
         // TODO: actual error codes
         if ( h->cb_err )
             h->cb_err(-1, h, h->cb_data);
+
+    } else if ( events & BEV_EVENT_EOF ) {
+        if ( h->cb_err )
+            h->cb_err(0, h, h->cb_data);
 
     } else {
         logger(LOG_WARN, "loop", "Unhandled callback in loop_sock_cb_event, events = %d", (int)events);
