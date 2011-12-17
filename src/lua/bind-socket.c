@@ -372,6 +372,8 @@ static int bind_loop_tcp_connect(lua_State *L) {
     lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
+    bind_loop_socket_setmetatable(L);
+
     // stack: host, port, handler, sd
     assert(lua_gettop(L) == 4);
 
@@ -425,8 +427,6 @@ static int bind_loop_tcp_connect(lua_State *L) {
 
     // stack: sd
     assert(lua_gettop(L) == 1);
-
-    bind_loop_socket_setmetatable(L);
 
     return 1;
 }
@@ -488,6 +488,8 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
+    bind_loop_socket_setmetatable(L);
+
     // stack: sd
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, ld->handler_ref); // stack: sd, handler
@@ -537,8 +539,6 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     sd->host[SOCKET_HOST_LEN-1] = '\0';
     
     sd->port = 0; // TODO
-
-    bind_loop_socket_setmetatable(L);
 
     // stack: sd
 
