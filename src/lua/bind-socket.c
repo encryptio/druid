@@ -1,5 +1,6 @@
 #include "lua/bind.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <err.h>
 #include <assert.h>
@@ -18,15 +19,19 @@ enum socket_state {
 #define SOCKET_READ_SIZE 1024
 #define SOCKET_HOST_LEN 64
 
+struct socket_cbrefs {
+    int error;
+    int connect;
+    int eof;
+    int read;
+};
+
 struct socket_data {
     lua_State *L;
 
     enum socket_state state;
 
-    int error_cb_ref;
-    int connect_cb_ref;
-    int read_cb_ref;
-
+    struct socket_cbrefs cb;
     int sd_ref;
 
     struct loop_sockhandle *sock;
@@ -39,15 +44,118 @@ struct socket_data {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// building block
+// input stack: |BOTTOM|> socket, table/fn, <TOP>
+// the top of the stack is the table or function of callbacks, and the socket is
+// the userdata containing a partially initialized socket.
+// 
+// output stack: |BOTTOM> socket <TOP>
+// output stack: |BOTTOM> socket, errmsg <TOP> - when return value is false
+//
+// returns false failure, true on success
+static bool bind_loop_sock_setup_cbrefs(lua_State *L) {
+    struct socket_data *sd = lua_touserdata(L, -2);
+    assert(sd != NULL);
+
+    sd->cb.read    = LUA_REFNIL;
+    sd->cb.eof     = LUA_REFNIL;
+    sd->cb.error   = LUA_REFNIL;
+    sd->cb.connect = LUA_REFNIL;
+
+    if ( lua_type(L, -1) == LUA_TFUNCTION ) {
+        lua_pushvalue(L, -2);
+        if ( lua_pcall(L, 1, 1, 0) )
+            return false;
+
+        if ( lua_type(L, -1) != LUA_TTABLE ) {
+            lua_pop(L, 1);
+            lua_pushliteral(L, "Callback did not return a table");
+            return false;
+        }
+
+    } else if ( lua_type(L, -1) != LUA_TTABLE ) {
+        lua_pop(L, 1);
+        lua_pushliteral(L, "Callback object is not a function or a table");
+        return false;
+    }
+
+    lua_getfield(L, -1, "read");
+    if ( lua_type(L, -1) != LUA_TFUNCTION ) {
+        const char *typename = lua_typename(L, lua_type(L, -1));
+        lua_pop(L, 2);
+
+        lua_pushliteral(L, "'read' field of callback table is not a function (is ");
+        lua_pushstring(L, typename);
+        lua_pushliteral(L, ")");
+        lua_concat(L, 3);
+
+        return false;
+    }
+    sd->cb.read = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // TODO: add default implementation, which does nothing
+    lua_getfield(L, -1, "eof");
+    if ( lua_type(L, -1) != LUA_TFUNCTION ) {
+        const char *typename = lua_typename(L, lua_type(L, -1));
+        lua_pop(L, 2);
+
+        lua_pushliteral(L, "'eof' field of callback table is not a function (is ");
+        lua_pushstring(L, typename);
+        lua_pushliteral(L, ")");
+        lua_concat(L, 3);
+
+        return false;
+    }
+    sd->cb.eof = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // TODO: add default implementation, which does nothing
+    lua_getfield(L, -1, "connect");
+    if ( lua_type(L, -1) != LUA_TFUNCTION ) {
+        const char *typename = lua_typename(L, lua_type(L, -1));
+        lua_pop(L, 2);
+
+        lua_pushliteral(L, "'connect' field of callback table is not a function (is ");
+        lua_pushstring(L, typename);
+        lua_pushliteral(L, ")");
+        lua_concat(L, 3);
+
+        return false;
+    }
+    sd->cb.connect = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // TODO: add default implementation, which raises errors sent to it
+    lua_getfield(L, -1, "error");
+    if ( lua_type(L, -1) != LUA_TFUNCTION ) {
+        const char *typename = lua_typename(L, lua_type(L, -1));
+        lua_pop(L, 2);
+
+        lua_pushliteral(L, "'error' field of callback table is not a function (is ");
+        lua_pushstring(L, typename);
+        lua_pushliteral(L, ")");
+        lua_concat(L, 3);
+
+        return false;
+    }
+    sd->cb.error = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    lua_pop(L, 1);
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static int bind_loop_sock_gc(lua_State *L) {
     struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
     if ( sd->state == SOCKET_DESTROYED )
         return 0;
 
     luaL_unref(L, LUA_REGISTRYINDEX, sd->sd_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->error_cb_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->connect_cb_ref);
-    luaL_unref(L, LUA_REGISTRYINDEX, sd->read_cb_ref);
+
+    luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.error);
+    luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.eof);
+    luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.connect);
+    luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.read);
 
     loop_sock_close(sd->sock);
     sd->sock = NULL;
@@ -155,7 +263,7 @@ static void bind_loop_read_cb(size_t in_buffer, struct loop_sockhandle *h, void 
         loop_sock_drop(h, ret);
         in_buffer -= ret;
 
-        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->read_cb_ref);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->cb.read);
         lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
         lua_pushlstring(L, (char *)sd->buffer, ret);
         lua_call(L, 2, 0);
@@ -173,7 +281,7 @@ static void bind_loop_connect_cb(struct loop_sockhandle *h, void *data) {
 
     sd->state = SOCKET_OPEN;
 
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->connect_cb_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->cb.connect);
     lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
     lua_call(L, 1, 0);
 }
@@ -185,7 +293,12 @@ static void bind_loop_error_cb(int err, struct loop_sockhandle *h, void *data) {
     if ( sd->state == SOCKET_DESTROYED )
         return;
 
-    lua_rawgeti(L, LUA_REGISTRYINDEX, sd->error_cb_ref);
+    if ( err == 0 ) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->cb.eof);
+    } else {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, sd->cb.error);
+    }
+
     lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
     lua_pushinteger(L, err);
     lua_call(L, 2, 0);
@@ -198,20 +311,39 @@ static void bind_loop_error_cb(int err, struct loop_sockhandle *h, void *data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int bind_loop_tcp_connect(lua_State *L) {
-    require_exactly(L, 5);
+    require_exactly(L, 3);
 
     const char *host = luaL_checkstring(L, 1);
     int port         = luaL_checkint(L, 2);
-    luaL_checktype(L, 3, LUA_TFUNCTION); // TODO: allow this to be nil for "raise errors"
-    luaL_checktype(L, 4, LUA_TFUNCTION);
-    luaL_checktype(L, 5, LUA_TFUNCTION);
+    luaL_argcheck(L, lua_type(L, 3) == LUA_TFUNCTION || lua_type(L, 3) == LUA_TTABLE, 3,
+            "Handler is not a function or table");
 
     luaL_argcheck(L, port >= 0 && port <= 65535, 2, "Port is out of range");
     luaL_argcheck(L, strlen(host) > 0, 1, "Hostname is empty");
 
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
+    lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // stack: host, port, handler, sd
+    assert(lua_gettop(L) == 4);
+
+    lua_pushvalue(L, 3); // stack: ..., sd, handler
+    if ( !bind_loop_sock_setup_cbrefs(L) ) {
+        // stack: host, port, handler, sd, errmsg
+        assert(lua_gettop(L) == 5);
+
+        luaL_unref(L, LUA_REGISTRYINDEX, sd->sd_ref);
+
+        luaL_where(L, 1);
+        lua_pushvalue(L, -2);
+        lua_concat(L, 2);
+        return lua_error(L);
+    }
+
+    // stack: host, port, handler, sd
+    assert(lua_gettop(L) == 4);
 
     sd->L = L;
     sd->sock = loop_tcp_connect(host, port, bind_loop_error_cb, bind_loop_connect_cb, bind_loop_read_cb, sd);
@@ -222,12 +354,9 @@ static int bind_loop_tcp_connect(lua_State *L) {
         luaL_where(L, 1);
         lua_pushliteral(L, "Couldn't setup TCP connection");
         lua_concat(L, 2);
-        lua_error(L);
+        return lua_error(L);
     }
 
-    sd->read_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    sd->connect_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    sd->error_cb_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     sd->state = SOCKET_CONNECTING;
     
     strncpy(sd->host, host, SOCKET_HOST_LEN);
@@ -235,11 +364,14 @@ static int bind_loop_tcp_connect(lua_State *L) {
     
     sd->port = port;
 
-    lua_pop(L, 2); // host,port
+    lua_pop(L, 4);
+
+    // stack: <empty>
+    assert(lua_gettop(L) == 0);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, sd->sd_ref);
 
-    // now the userdata is the only thing on the stack, no extraneous references
+    // stack: sd
     assert(lua_gettop(L) == 1);
 
     if ( luaL_newmetatable(L, "druid socket") ) {
