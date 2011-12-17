@@ -38,4 +38,9 @@ void loop_sock_close(struct loop_sockhandle *h);
 struct loop_watcher *loop_watch_fd_for_reading(int fd, loop_timer_cb cb, void *data);
 void loop_stop_watching(struct loop_watcher *w);
 
+// TODO: allow binding to specific interfaces
+typedef int (*loop_accept_cb)(const char *from, struct loop_tcp_cb *cb, struct loop_sockhandle *h, void *data);
+struct loop_listener *loop_tcp_listen(uint16_t port, loop_accept_cb cb, void *data);
+void loop_listener_close(struct loop_listener *ll);
+
 #endif

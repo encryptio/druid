@@ -310,6 +310,37 @@ static void bind_loop_error_cb(int err, struct loop_sockhandle *h, void *data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void bind_loop_socket_setmetatable(lua_State *L) {
+    if ( luaL_newmetatable(L, "druid socket") ) {
+        int table = lua_gettop(L);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, bind_loop_sock_gc);
+        lua_settable(L, table);
+
+        lua_pushliteral(L, "__tostring");
+        lua_pushcfunction(L, bind_loop_sock_tostring);
+        lua_settable(L, table);
+
+        lua_pushliteral(L, "__index");
+        if ( luaL_newmetatable(L, "druid socket methods") ) {
+            luaL_Reg fns[] = {
+                { "write", bind_loop_sock_write },
+                { "close", bind_loop_sock_close },
+                { "get_hostname", bind_loop_sock_get_hostname },
+                { "get_port", bind_loop_sock_get_port },
+                { "tostring", bind_loop_sock_tostring },
+                { NULL, NULL }
+            };
+
+            luaL_register(L, NULL, fns);
+        }
+        lua_settable(L, table);
+    }
+
+    lua_setmetatable(L, 1);
+}
+
 static int bind_loop_tcp_connect(lua_State *L) {
     require_exactly(L, 3);
 
@@ -380,24 +411,179 @@ static int bind_loop_tcp_connect(lua_State *L) {
     // stack: sd
     assert(lua_gettop(L) == 1);
 
-    if ( luaL_newmetatable(L, "druid socket") ) {
+    bind_loop_socket_setmetatable(L);
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define CREATION_LOCATION_LEN 128
+
+struct listener_data {
+    lua_State *L;
+    struct loop_listener *ll;
+    int port;
+    int handler_ref;
+    int listener_ref;
+    char creation_location[CREATION_LOCATION_LEN];
+};
+
+static int bind_loop_listener_gc(lua_State *L) {
+    struct listener_data *ld = luaL_checkudata(L, 1, "druid listener");
+    
+    if ( ld->handler_ref != LUA_REFNIL ) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ld->handler_ref);
+        ld->handler_ref = LUA_REFNIL;
+    }
+
+    if ( ld->listener_ref != LUA_REFNIL ) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ld->listener_ref);
+        ld->listener_ref = LUA_REFNIL;
+    }
+
+    if ( ld->ll ) {
+        loop_listener_close(ld->ll);
+        ld->ll = NULL;
+    }
+
+    return 0;
+}
+
+static int bind_loop_listener_tostring(lua_State *L) {
+    require_exactly(L, 1);
+
+    struct listener_data *ld = luaL_checkudata(L, 1, "druid listener");
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "listener(on port ");
+    lua_pushinteger(L, ld->port);
+    lua_pushliteral(L, ")");
+    lua_concat(L, 3);
+
+    return 1;
+}
+
+static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct loop_sockhandle *h, void *data) {
+    struct listener_data *ld = data;
+    lua_State *L = ld->L;
+
+    struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
+    assert(sd);
+    lua_pushvalue(L, -1);
+    sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // stack: sd
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ld->handler_ref); // stack: sd, handler
+    if ( !bind_loop_sock_setup_cbrefs(L) ) {
+        // stack: sd, errmsg
+
+        lua_pushstring(L, ld->creation_location);
+        lua_pushvalue(L, -2);
+        lua_concat(L, 2);
+
+        // stack: sd, errmsg, where+errmsg
+
+        int r = luaL_ref(L, LUA_REGISTRYINDEX);
+        lua_pop(L, 2);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, r);
+        luaL_unref(L, LUA_REGISTRYINDEX, r);
+
+        // stack: where+errmsg
+
+        //lua_error(L);
+        // ARGH HOW TO RAISE THIS ERROR
+        const char *error = lua_tostring(L, -1);
+        logger(LOG_ERR, "bind", "Couldn't accept socket - handler couldn't be created: %s", error);
+
+        lua_pop(L, 1);
+
+        // stack: <empty>
+
+        return -1; // close the socket
+    }
+
+    // stack: sd
+
+    struct loop_tcp_cb loop_cb = {
+        .error = bind_loop_error_cb,
+        .connect = bind_loop_connect_cb,
+        .read = bind_loop_read_cb,
+        .data = sd
+    };
+    *cb = loop_cb;
+
+    sd->L = L;
+    sd->sock = h;
+    sd->state = SOCKET_CONNECTING; // connect callback will be called soon
+    
+    strncpy(sd->host, from, SOCKET_HOST_LEN);
+    sd->host[SOCKET_HOST_LEN-1] = '\0';
+    
+    sd->port = 0; // TODO
+
+    bind_loop_socket_setmetatable(L);
+
+    // stack: sd
+
+    lua_pop(L, 1);
+
+    return 0;
+}
+
+static int bind_loop_tcp_listen(lua_State *L) {
+    require_exactly(L, 2);
+
+    int port = luaL_checkint(L, 1);
+    luaL_argcheck(L, lua_type(L, 2) == LUA_TFUNCTION || lua_type(L, 2) == LUA_TTABLE, 2,
+            "Handler is not a function or table");
+
+    int handler_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_pop(L, 1);
+
+    luaL_argcheck(L, port > 0 && port <= 65535, 1, "Port is out of range");
+
+    struct listener_data *ld = lua_newuserdata(L, sizeof(struct listener_data));
+    assert(ld);
+    lua_pushvalue(L, -1);
+    ld->listener_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    ld->handler_ref = handler_ref;
+    ld->L = L;
+    ld->port = port;
+
+    // stack: ld
+
+    luaL_where(L, 1);
+    snprintf(ld->creation_location, CREATION_LOCATION_LEN, "%s", lua_tostring(L, -1));
+    lua_pop(L, 1);
+
+    // stack: ld
+
+    if ( (ld->ll = loop_tcp_listen(port, bind_loop_accept_cb, ld)) == NULL ) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ld->handler_ref);
+        luaL_unref(L, LUA_REGISTRYINDEX, ld->listener_ref);
+        lua_pop(L, 1);
+
+        lua_pushnil(L);
+        return 1;
+    }
+
+    if ( luaL_newmetatable(L, "druid listener") ) {
         int table = lua_gettop(L);
 
         lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, bind_loop_sock_gc);
+        lua_pushcfunction(L, bind_loop_listener_gc);
         lua_settable(L, table);
 
         lua_pushliteral(L, "__tostring");
-        lua_pushcfunction(L, bind_loop_sock_tostring);
+        lua_pushcfunction(L, bind_loop_listener_tostring);
         lua_settable(L, table);
 
         lua_pushliteral(L, "__index");
-        if ( luaL_newmetatable(L, "druid socket methods") ) {
+        if ( luaL_newmetatable(L, "druid listener methods") ) {
             luaL_Reg fns[] = {
-                { "write", bind_loop_sock_write },
-                { "close", bind_loop_sock_close },
-                { "get_hostname", bind_loop_sock_get_hostname },
-                { "get_port", bind_loop_sock_get_port },
+                { "stop", bind_loop_listener_gc },
                 { "tostring", bind_loop_sock_tostring },
                 { NULL, NULL }
             };
@@ -408,7 +594,7 @@ static int bind_loop_tcp_connect(lua_State *L) {
     }
 
     lua_setmetatable(L, 1);
-
+    
     return 1;
 }
 
@@ -420,6 +606,7 @@ int bind_socket(lua_State *L) {
 
     luaL_Reg reg[] = {
         { "tcp_connect", bind_loop_tcp_connect },
+        { "tcp_listen", bind_loop_tcp_listen },
         { NULL, NULL }
     };
 

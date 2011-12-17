@@ -6,11 +6,13 @@
 #include <string.h>
 #include <err.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include <event2/dns.h>
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
+#include <event2/listener.h>
 
 #include "logger.h"
 
@@ -125,6 +127,7 @@ void loop_add_timer(double in, loop_timer_cb cb, void *data) {
 struct loop_sockhandle {
     struct bufferevent *bev;
     struct loop_tcp_cb cb;
+    bool has_dns;
 };
 
 size_t loop_sock_peek(struct loop_sockhandle *h, uint8_t *into, size_t want) {
@@ -165,7 +168,10 @@ static void loop_sock_cb_read(struct bufferevent *bev, void *ctx) {
 static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx) {
     struct loop_sockhandle *h = ctx;
     if ( events & BEV_EVENT_CONNECTED ) {
-        evdns_refcount_decrement();
+        if ( h->has_dns ) {
+            evdns_refcount_decrement();
+            h->has_dns = false;
+        }
         logger(LOG_JUNK, "loop", "Connected TCP socket");
 
         if ( h->cb.connect )
@@ -178,7 +184,10 @@ static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx)
         if ( err )
             logger(LOG_WARN, "loop", "Couldn't resolve hostname: %s", evutil_gai_strerror(err));
 
-        evdns_refcount_decrement();
+        if ( h->has_dns ) {
+            evdns_refcount_decrement();
+            h->has_dns = false;
+        }
 
         // TODO: actual error codes
         h->cb.error(-1, h, h->cb.data);
@@ -204,6 +213,8 @@ struct loop_sockhandle *loop_tcp_connect(const char *host, uint16_t port, struct
     assert(cb.error);
     // cb.connect is optional
 
+    h->has_dns = true;
+
     if ( (h->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE)) == NULL ) {
         logger(LOG_ERR, "loop", "Couldn't create bufferevent in loop_tcp_connect");
         goto BAD_END;
@@ -226,6 +237,105 @@ BAD_END:
     }
     free(h);
     return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// TCP server
+
+struct loop_listener {
+    struct evconnlistener *l;
+    loop_accept_cb cb;
+    void *cb_data;
+};
+
+static void loop_accept_err(struct evconnlistener *l, void *ctx) {
+    struct loop_listener *ll = ctx;
+    assert(ll->l = l);
+
+    assert(0);
+}
+
+static void loop_accept_conn(struct evconnlistener *l, evutil_socket_t fd,
+        struct sockaddr *address, int socklen, void *ctx) {
+
+    struct loop_listener *ll = ctx;
+    assert(ll->l = l);
+
+    assert(address->sa_family == AF_INET); // TODO: IPv6
+
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(((struct sockaddr_in *)address)->sin_addr), ip, INET_ADDRSTRLEN);
+
+    struct loop_sockhandle *h = NULL;
+    if ( (h = calloc(1, sizeof(struct loop_sockhandle))) == NULL )
+        err(1, "Couldn't allocate space for loop_sockhandle");
+
+    if ( ll->cb(ip, &(h->cb), h, ll->cb_data) ) {
+        // nonzero: ignore this connection
+        close(fd);
+        free(h);
+        return;
+    }
+
+    assert(h->cb.read);
+    assert(h->cb.error);
+    h->has_dns = false;
+
+    if ( (h->bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE)) == NULL ) {
+        logger(LOG_ERR, "loop", "Couldn't create bufferevent in loop_accept_conn");
+        goto BAD_END;
+    }
+
+    bufferevent_setcb(h->bev, loop_sock_cb_read, NULL, loop_sock_cb_event, h);
+    bufferevent_enable(h->bev, EV_READ|EV_WRITE);
+
+    if ( h->cb.connect )
+        h->cb.connect(h, h->cb.data);
+
+    logger(LOG_JUNK, "loop", "Accepted connection from %s", ip);
+
+    return;
+
+BAD_END:
+    if ( h ) {
+        if ( h->bev ) bufferevent_free(h->bev);
+    }
+    free(h);
+    return;
+}
+
+struct loop_listener *loop_tcp_listen(uint16_t port, loop_accept_cb cb, void *data) {
+    struct loop_listener *ll;
+    if ( (ll = malloc(sizeof(struct loop_listener))) == NULL )
+        err(1, "Couldn't malloc space for loop_listener");
+
+    // TODO: IPv6
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(struct sockaddr_in));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(port);
+
+    ll->l = evconnlistener_new_bind(base, loop_accept_conn, ll,
+            LEV_OPT_CLOSE_ON_FREE|LEV_OPT_REUSEABLE, -1,
+            (struct sockaddr *) &sin, sizeof(struct sockaddr_in));
+
+    if ( !ll->l ) {
+        logger(LOG_ERR, "loop", "Couldn't listen on port %d: %s", (int)port, strerror(errno));
+        free(ll);
+        return NULL;
+    }
+
+    evconnlistener_set_error_cb(ll->l, loop_accept_err);
+
+    ll->cb = cb;
+    ll->cb_data = data;
+
+    return ll;
+}
+
+void loop_listener_close(struct loop_listener *ll) {
+    evconnlistener_free(ll->l);
+    free(ll);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
