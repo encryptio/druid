@@ -122,6 +122,18 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         if ( strcmp(argv[i], "-i") == 0 ) {
             run_interactive = true;
+
+        } else if ( strcmp(argv[i], "-e") == 0 ) {
+            if ( i+1 >= argc ) {
+                fprintf(stderr, "-e requires a string of code to execute\n");
+                exit(1);
+            }
+            i++;
+            if ( luaL_dostring(L, argv[i]) ) {
+                fprintf(stderr, "error executing: %s\n", luaL_checkstring(L, -1));
+                exit(1);
+            }
+
         } else if ( luaL_dofile(L, argv[i]) ) {
             fprintf(stderr, "error executing '%s': %s\n", argv[i], luaL_checkstring(L, -1));
             exit(1);
