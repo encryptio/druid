@@ -124,11 +124,7 @@ void loop_add_timer(double in, loop_timer_cb cb, void *data) {
 
 struct loop_sockhandle {
     struct bufferevent *bev;
-
-    loop_error_cb cb_err;
-    loop_connect_cb cb_connect;
-    loop_read_cb cb_read;
-    void *cb_data;
+    struct loop_tcp_cb cb;
 };
 
 size_t loop_sock_peek(struct loop_sockhandle *h, uint8_t *into, size_t want) {
@@ -162,10 +158,8 @@ void loop_sock_close(struct loop_sockhandle *h) {
 
 static void loop_sock_cb_read(struct bufferevent *bev, void *ctx) {
     struct loop_sockhandle *h = ctx;
-    if ( h->cb_read ) {
-        size_t size = evbuffer_get_length(bufferevent_get_input(h->bev));
-        h->cb_read(size, h, h->cb_data);
-    }
+    size_t size = evbuffer_get_length(bufferevent_get_input(h->bev));
+    h->cb.read(size, h, h->cb.data);
 }
 
 static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx) {
@@ -174,8 +168,8 @@ static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx)
         evdns_refcount_decrement();
         logger(LOG_JUNK, "loop", "Connected TCP socket");
 
-        if ( h->cb_connect )
-            h->cb_connect(h, h->cb_data);
+        if ( h->cb.connect )
+            h->cb.connect(h, h->cb.data);
 
     } else if ( events & BEV_EVENT_ERROR ) {
         logger(LOG_WARN, "loop", "Couldn't connect to host: %s", evutil_socket_error_to_string(evutil_socket_geterror(bufferevent_getfd(bev))));
@@ -187,12 +181,10 @@ static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx)
         evdns_refcount_decrement();
 
         // TODO: actual error codes
-        if ( h->cb_err )
-            h->cb_err(-1, h, h->cb_data);
+        h->cb.error(-1, h, h->cb.data);
 
     } else if ( events & BEV_EVENT_EOF ) {
-        if ( h->cb_err )
-            h->cb_err(0, h, h->cb_data);
+        h->cb.error(0, h, h->cb.data);
 
     } else {
         logger(LOG_WARN, "loop", "Unhandled callback in loop_sock_cb_event, events = %d", (int)events);
@@ -202,20 +194,15 @@ static void loop_sock_cb_event(struct bufferevent *bev, short events, void *ctx)
 ////////////////////////////////////////////////////////////////////////////////
 // TCP client
 
-struct loop_sockhandle *loop_tcp_connect(const char *host, uint16_t port,
-        loop_error_cb cb_err,
-        loop_connect_cb cb_connect,
-        loop_read_cb cb_read,
-        void *data) {
-
+struct loop_sockhandle *loop_tcp_connect(const char *host, uint16_t port, struct loop_tcp_cb cb) {
     struct loop_sockhandle *h = NULL;
     if ( (h = calloc(1, sizeof(struct loop_sockhandle))) == NULL )
         err(1, "Couldn't allocate space for loop_sockhandle");
 
-    h->cb_err     = cb_err;
-    h->cb_connect = cb_connect;
-    h->cb_read    = cb_read;
-    h->cb_data    = data;
+    h->cb = cb;
+    assert(cb.read);
+    assert(cb.error);
+    // cb.connect is optional
 
     if ( (h->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE)) == NULL ) {
         logger(LOG_ERR, "loop", "Couldn't create bufferevent in loop_tcp_connect");

@@ -345,8 +345,14 @@ static int bind_loop_tcp_connect(lua_State *L) {
     // stack: host, port, handler, sd
     assert(lua_gettop(L) == 4);
 
+    struct loop_tcp_cb loop_cb = {
+        .error = bind_loop_error_cb,
+        .connect = bind_loop_connect_cb,
+        .read = bind_loop_read_cb,
+        .data = sd
+    };
     sd->L = L;
-    sd->sock = loop_tcp_connect(host, port, bind_loop_error_cb, bind_loop_connect_cb, bind_loop_read_cb, sd);
+    sd->sock = loop_tcp_connect(host, port, loop_cb);
 
     if ( !sd->sock ) {
         luaL_unref(L, LUA_REGISTRYINDEX, sd->sd_ref);

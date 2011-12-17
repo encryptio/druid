@@ -6,6 +6,18 @@
 
 struct loop_sockhandle;
 struct loop_watcher;
+struct loop_listener;
+
+typedef void (*loop_error_cb)(int err, struct loop_sockhandle *h, void *data);
+typedef void (*loop_connect_cb)(struct loop_sockhandle *h, void *data);
+typedef void (*loop_read_cb)(size_t in_buffer, struct loop_sockhandle *h, void *data);
+
+struct loop_tcp_cb {
+    loop_error_cb error;
+    loop_connect_cb connect;
+    loop_read_cb read;
+    void *data;
+};
 
 void loop_setup(void);
 void loop_teardown(void);
@@ -16,15 +28,7 @@ typedef void (*loop_timer_cb)(void *data);
 void loop_add_timer(double in, loop_timer_cb cb, void *data);
 void loop_do_repeatedly_whenever(loop_timer_cb cb, void *data);
 
-typedef void (*loop_error_cb)(int err, struct loop_sockhandle *h, void *data);
-typedef void (*loop_connect_cb)(struct loop_sockhandle *h, void *data);
-typedef void (*loop_read_cb)(size_t in_buffer, struct loop_sockhandle *h, void *data);
-
-struct loop_sockhandle *loop_tcp_connect(const char *host, uint16_t port,
-        loop_error_cb cb_err,
-        loop_connect_cb cb_connect,
-        loop_read_cb cb_read,
-        void *data);
+struct loop_sockhandle *loop_tcp_connect(const char *host, uint16_t port, struct loop_tcp_cb cb);
 
 size_t loop_sock_peek(struct loop_sockhandle *h, uint8_t *into, size_t want);
 void loop_sock_drop(struct loop_sockhandle *h, size_t drop);
