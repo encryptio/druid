@@ -217,6 +217,17 @@ static int bind_loop_sock_get_port(lua_State *L) {
     return 1;
 }
 
+static int bind_loop_sock_id(lua_State *L) {
+    require_exactly(L, 1);
+
+    struct socket_data *sd = luaL_checkudata(L, 1, "druid socket");
+    lua_pop(L, 1);
+
+    lua_pushnumber(L, (uintptr_t)sd );
+
+    return 1;
+}
+
 static int bind_loop_sock_tostring(lua_State *L) {
     require_exactly(L, 1);
 
@@ -238,9 +249,12 @@ static int bind_loop_sock_tostring(lua_State *L) {
     lua_pushliteral(L, " port ");
     lua_pushinteger(L, sd->port);
 
+    lua_pushliteral(L, ", id ");
+    lua_pushnumber(L, (uintptr_t)sd );
+
     lua_pushliteral(L, ")");
 
-    lua_concat(L, 6);
+    lua_concat(L, 8);
     
     return 1;
 }
@@ -330,6 +344,7 @@ static void bind_loop_socket_setmetatable(lua_State *L) {
                 { "get_hostname", bind_loop_sock_get_hostname },
                 { "get_port", bind_loop_sock_get_port },
                 { "tostring", bind_loop_sock_tostring },
+                { "id", bind_loop_sock_id },
                 { NULL, NULL }
             };
 
