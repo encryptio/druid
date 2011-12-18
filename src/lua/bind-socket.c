@@ -371,6 +371,7 @@ static int bind_loop_tcp_connect(lua_State *L) {
 
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
+    memset(sd, 0, sizeof(struct socket_data));
     lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -487,6 +488,7 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
 
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
+    memset(sd, 0, sizeof(struct socket_data));
     lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -563,6 +565,7 @@ static int bind_loop_tcp_listen(lua_State *L) {
 
     struct listener_data *ld = lua_newuserdata(L, sizeof(struct listener_data));
     assert(ld);
+    memset(ld, 0, sizeof(struct listener_data));
     lua_pushvalue(L, -1);
     ld->listener_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     ld->handler_ref = handler_ref;
