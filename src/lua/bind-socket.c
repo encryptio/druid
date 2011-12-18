@@ -486,6 +486,8 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     struct listener_data *ld = data;
     lua_State *L = ld->L;
 
+    int starttop = lua_gettop(L);
+
     struct socket_data *sd = lua_newuserdata(L, sizeof(struct socket_data));
     assert(sd);
     memset(sd, 0, sizeof(struct socket_data));
@@ -495,16 +497,19 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     bind_loop_socket_setmetatable(L);
 
     // stack: sd
+    assert(lua_gettop(L)-starttop == 1);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, ld->handler_ref); // stack: sd, handler
     if ( !bind_loop_sock_setup_cbrefs(L) ) {
         // stack: sd, errmsg
+        assert(lua_gettop(L)-starttop == 2);
 
         lua_pushstring(L, ld->creation_location);
         lua_pushvalue(L, -2);
         lua_concat(L, 2);
 
         // stack: sd, errmsg, where+errmsg
+        assert(lua_gettop(L)-starttop == 3);
 
         int r = luaL_ref(L, LUA_REGISTRYINDEX);
         lua_pop(L, 2);
@@ -512,6 +517,7 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
         luaL_unref(L, LUA_REGISTRYINDEX, r);
 
         // stack: where+errmsg
+        assert(lua_gettop(L)-starttop == 1);
 
         //lua_error(L);
         // ARGH HOW TO RAISE THIS ERROR
@@ -521,11 +527,13 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
         lua_pop(L, 1);
 
         // stack: <empty>
+        assert(lua_gettop(L)-starttop == 0);
 
         return -1; // close the socket
     }
 
     // stack: sd
+    assert(lua_gettop(L)-starttop == 1);
 
     struct loop_tcp_cb loop_cb = {
         .error = bind_loop_error_cb,
@@ -545,6 +553,7 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     sd->port = 0; // TODO
 
     // stack: sd
+    assert(lua_gettop(L)-starttop == 1);
 
     lua_pop(L, 1);
 
