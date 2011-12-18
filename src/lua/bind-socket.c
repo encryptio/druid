@@ -157,8 +157,10 @@ static int bind_loop_sock_gc(lua_State *L) {
     luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.connect);
     luaL_unref(L, LUA_REGISTRYINDEX, sd->cb.read);
 
-    loop_sock_close(sd->sock);
-    sd->sock = NULL;
+    if ( sd->sock ) {
+        loop_sock_close(sd->sock);
+        sd->sock = NULL;
+    }
 
     sd->state = SOCKET_DESTROYED;
 
