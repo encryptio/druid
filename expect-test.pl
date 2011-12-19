@@ -5,8 +5,14 @@ use strict;
 my ($dir) = @ARGV;
 die unless -d $dir;
 
-open my $lf, "-|", "prog/druid", "$dir/go.lua"
-    or die "Couldn't open pipe to druid: $!";
+my $lf;
+if ( -e "$dir/go.lua" ) {
+    open $lf, "-|", "prog/druid", "$dir/go.lua"
+        or die "Couldn't open pipe to druid: $!";
+} elsif ( -e "$dir/go.sh" ) {
+    open $lf, "-|", "cd \Q$dir\E; sh go.sh"
+        or die "Couldn't open pipe to shell: $!";
+}
 
 open my $lf2, "<", "$dir/expect"
     or die "Couldn't open $dir/expect: $!";

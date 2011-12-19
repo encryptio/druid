@@ -157,11 +157,15 @@ def runExpectTest(env,target,source):
 
 def expectTest(dirname):
     c = env.Command(".test.expect."+dirname+".passed", 'tests/'+dirname, runExpectTest)
-    Depends(c, 'tests/'+dirname+'/go.lua')
+    if os.path.exists('tests/'+dirname+'/go.lua'):
+        Depends(c, 'tests/'+dirname+'/go.lua')
+    if os.path.exists('tests/'+dirname+'/go.sh'):
+        Depends(c, 'tests/'+dirname+'/go.sh')
     Depends(c, 'tests/'+dirname+'/expect')
     Depends(c, 'expect-test.pl')
     Depends(c, 'prog/druid')
 
 expectTest("timer")
 expectTest("stoploop")
+expectTest("execute")
 
