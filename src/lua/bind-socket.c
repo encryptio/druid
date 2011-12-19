@@ -493,6 +493,7 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     memset(sd, 0, sizeof(struct socket_data));
     lua_pushvalue(L, -1);
     sd->sd_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    sd->L = L;
 
     bind_loop_socket_setmetatable(L);
 
@@ -543,7 +544,6 @@ static int bind_loop_accept_cb(const char *from, struct loop_tcp_cb *cb, struct 
     };
     *cb = loop_cb;
 
-    sd->L = L;
     sd->sock = h;
     sd->state = SOCKET_CONNECTING; // connect callback will be called soon
     
