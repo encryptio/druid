@@ -103,7 +103,7 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->block_count = blocks;
 
     if ( (io->base = malloc(block_size * blocks)) == NULL ) {
-        logger(LOG_ERR, "baseio", "Couldn't allocate device memory (%llu blocks of %llu bytes each",
+        logger(LOG_ERR, "baseio", "Couldn't allocate device memory (%llu blocks of %llu bytes each)",
                 (unsigned long long) block_size, (unsigned long long) blocks);
         goto ERROR;
     }
