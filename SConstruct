@@ -1,6 +1,6 @@
 import os
 env = Environment( ENV = os.environ)
-env.Append(CCFLAGS = '-O2 -Wall -std=c99 -g -D_GNU_SOURCE')
+env.Append(CCFLAGS = '-O2 -Wall -std=c99 -g -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64')
 env.Append(CPPPATH = 'src')
 env.Append(LIBS='readline')
 

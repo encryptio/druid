@@ -4,8 +4,14 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <err.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 
 #include "bdev.h"
+#include "logger.h"
 
 struct bdev_data {
     struct bdev *dev;
@@ -256,28 +262,90 @@ static int bind_bio_create_malloc(lua_State *L) {
     return bind_bdev_wrap( L, bio_create_malloc(block_size, blocks), NULL, 0 );
 }
 
-static int bind_bio_create_mmap(lua_State *L) {
-    require_exactly(L, 4);
+static int bind_file(lua_State *L) {
+    require_atleast(L, 2);
 
-    uint64_t block_size = luaL_checkuint64(L, 1);
-    int fd              = luaL_checkuint64(L, 2);
-    size_t blocks       = luaL_checkuint64(L, 3);
-    off_t offset        = luaL_checkuint64(L, 4);
-    lua_pop(L, 4);
+    const char *filename = luaL_checkstring(L, 1);
+    uint64_t block_size  = luaL_checkuint64(L, 2);
 
-    return bind_bdev_wrap( L, bio_create_mmap(block_size, fd, blocks, offset), NULL, 0 );
-}
+    bool blocks_set = false;
+    uint64_t blocks = 0, offset = 0;
 
-static int bind_bio_create_posixfd(lua_State *L) {
-    require_exactly(L, 4);
+    if ( lua_gettop(L) >= 3 ) {
+        blocks_set = true;
+        blocks = luaL_checkuint64(L, 3);
+        if ( lua_gettop(L) >= 4 )
+            offset = luaL_checkuint64(L, 4);
+    }
 
-    uint64_t block_size = luaL_checkuint64(L, 1);
-    int fd              = luaL_checkuint64(L, 2);
-    size_t blocks       = luaL_checkuint64(L, 3);
-    off_t offset        = luaL_checkuint64(L, 4);
-    lua_pop(L, 4);
+    lua_pop(L, lua_gettop(L)-1);
 
-    return bind_bdev_wrap( L, bio_create_posixfd(block_size, fd, blocks, offset), NULL, 0 );
+    // stack: filename
+    
+    luaL_argcheck(L, (block_size >= 1),         1, "Unreasonable block size");
+    luaL_argcheck(L, (block_size <= (1 << 20)), 1, "Unreasonable block size");
+    if ( blocks_set )
+        luaL_argcheck(L, (blocks     >= 1),     2, "Zero block count");
+
+    int fd = open(filename, O_RDWR|(blocks_set ? O_CREAT : 0), S_IRUSR|S_IWUSR);
+        
+
+    if ( fd == -1 ) {
+        logger(LOG_ERR, "bind", "Couldn't open %s for reading and writing: %s", filename, strerror(errno));
+
+        lua_pop(L, 1);
+        // stack: <empty>
+
+        lua_pushnil(L);
+        return 1;
+    }
+
+    struct stat st;
+    int ret = fstat(fd, &st);
+    if ( ret < 0 ) {
+        logger(LOG_ERR, "bind", "Couldn't fstat(%s): %s", filename, strerror(errno));
+
+        close(fd); // ignore errors
+
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        return 1;
+    }
+
+    if ( block_size % st.st_blksize )
+        logger(LOG_INFO, "bind", "File \"%s\"'s optimal IO size is %d bytes, but the block size requested is %d bytes.", filename, (int)st.st_blksize, (int)block_size);
+
+    if ( blocks_set ) {
+        // make sure there are at least that number of blocks in the file
+
+        off_t size = st.st_size;
+        uint64_t wanted = block_size * blocks + offset;
+
+        if ( size < wanted )
+            if ( ftruncate(fd, wanted) < 0 )
+                logger(LOG_ERR, "bind", "Couldn't ftruncate(%s) to %llu blocks of %d bytes: %s", filename, blocks, (int)block_size, strerror(errno));
+    } else {
+        // not blocks_set
+        // set the block count to the size of the file
+        // note: offset must be 0 in this case
+
+        // TODO: should it be an error to open a file with a block size
+        //       that doesn't evenly divide the file size?
+        blocks = (st.st_size + block_size - 1) / block_size;
+    }
+
+    // TODO: need to try mmap first
+    //       but then there's a problem of mmap being successful, and there
+    //       being no more memory for program execution. we need to ensure
+    //       we aren't taking too much VM space with the mmap.
+
+    // baseio takes over responsibility for closing fd if it returns non-null
+    struct bdev *dev = bio_create_posixfd(block_size, fd, blocks, offset, true);
+
+    if ( dev == NULL )
+        close(fd);
+
+    return bind_bdev_wrap(L, dev, NULL, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,8 +567,7 @@ int bind_bdevs(lua_State *L) {
         { "ram", bind_bio_create_malloc },
 
         // TODO
-        { "bio_create_mmap", bind_bio_create_mmap },
-        { "bio_create_posixfd", bind_bio_create_posixfd },
+        { "file", bind_file },
 
         { "concat", bind_concat_open },
 
