@@ -7,8 +7,8 @@
 #include "test.h"
 
 char *TEST_current_suite = NULL;
-uint_fast32_t TEST_failed = 0;
-uint_fast32_t TEST_succeeded = 0;
+int TEST_failed = 0;
+int TEST_succeeded = 0;
 bool TEST_allsucceeded = true;
 bool TEST_verbose = false;
 

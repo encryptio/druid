@@ -5,8 +5,8 @@
 #include <stdio.h>
 
 extern char *TEST_current_suite;
-extern uint_fast32_t TEST_failed;
-extern uint_fast32_t TEST_succeeded;
+extern int TEST_failed;
+extern int TEST_succeeded;
 extern bool TEST_allsucceeded;
 extern bool TEST_verbose;
 
