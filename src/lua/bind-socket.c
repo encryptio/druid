@@ -582,12 +582,14 @@ static int bind_loop_tcp_listen(lua_State *L) {
     ld->port = port;
 
     // stack: ld
+    assert(lua_gettop(L) == 1);
 
     luaL_where(L, 1);
     snprintf(ld->creation_location, CREATION_LOCATION_LEN, "%s", lua_tostring(L, -1));
     lua_pop(L, 1);
 
     // stack: ld
+    assert(lua_gettop(L) == 1);
 
     if ( (ld->ll = loop_tcp_listen(port, bind_loop_accept_cb, ld)) == NULL ) {
         luaL_unref(L, LUA_REGISTRYINDEX, ld->handler_ref);
