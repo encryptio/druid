@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <errno.h>
 #include <string.h>
 
@@ -334,13 +335,32 @@ static int bind_file(lua_State *L) {
         blocks = (st.st_size + block_size - 1) / block_size;
     }
 
-    // TODO: need to try mmap first
-    //       but then there's a problem of mmap being successful, and there
-    //       being no more memory for program execution. we need to ensure
-    //       we aren't taking too much VM space with the mmap.
+    // try mmap first
+    struct bdev *dev = bio_create_mmap(block_size, fd, blocks, offset, true);
+    if ( dev != NULL ) {
+        // now try to mmap some more (anonymous) space - this makes sure we
+        // actually have enough VM to continue operating reliably
+
+        // TODO: make the mmap size here configurable
+        void *extra = mmap(NULL, 1024*1024*64, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        if ( extra == MAP_FAILED ) {
+            logger(LOG_WARN, "bind", "Tried to mmap extra space after mmaping %s, but failed to: %s. Falling back to posixfd.", filename, strerror(errno));
+            
+            dev->close(dev); // closes fd, so we need to reopen it
+            fd = open(filename, O_RDWR, S_IRUSR|S_IWUSR);
+            assert(fd >= 0);
+
+        } else {
+            if ( munmap(extra, 1024*1024*64) < 0 )
+                err(1, "Couldn't munmap extra space while opening %s", filename);
+
+            return bind_bdev_wrap(L, dev, NULL, 0);
+        }
+    }
+    // file mmap or extra space test failed
 
     // baseio takes over responsibility for closing fd if it returns non-null
-    struct bdev *dev = bio_create_posixfd(block_size, fd, blocks, offset, true);
+    dev = bio_create_posixfd(block_size, fd, blocks, offset, true);
 
     if ( dev == NULL )
         close(fd);
