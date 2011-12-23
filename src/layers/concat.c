@@ -151,6 +151,8 @@ struct bdev *concat_open(struct bdev **devices, int count) {
     dev->flush        = concat_flush;
     dev->sync         = concat_sync;
 
+    snprintf(dev->name, BDEV_NAME_LEN, "concat");
+
     return dev;
     
 }

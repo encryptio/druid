@@ -96,6 +96,8 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
     dev->flush        = generic_flush;
     dev->sync         = generic_sync;
 
+    snprintf(dev->name, BDEV_NAME_LEN, "malloc(%llu bytes)", (uint64_t)(block_size*blocks));
+
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");
 
@@ -120,7 +122,7 @@ ERROR:
     return NULL;
 }
 
-struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd) {
+struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd, const char *filename) {
     assert(block_size);
 
     struct bdev *dev;
@@ -139,6 +141,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     dev->clear_caches = mem_mmap_clear_caches;
     dev->flush        = mem_mmap_flush;
     dev->sync         = mem_mmap_sync;
+
+    snprintf(dev->name, BDEV_NAME_LEN, "mmap(%llu bytes in %s)", (uint64_t)(block_size*blocks), filename);
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");
@@ -228,7 +232,7 @@ static void fd_sync(struct bdev *self) {
                 io->fd, strerror(errno));
 }
 
-struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd) {
+struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd, const char *filename) {
     assert(block_size);
 
     struct bdev *dev;
@@ -247,6 +251,8 @@ struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_
     dev->clear_caches = generic_clear_caches;
     dev->flush        = generic_flush;
     dev->sync         = fd_sync;
+
+    snprintf(dev->name, BDEV_NAME_LEN, "posixio(%llu bytes in %s)", (uint64_t)(block_size*blocks), filename);
 
     if ( (dev->generic_block_buffer = malloc(block_size)) == NULL )
         err(1, "Couldn't allocate space for generic block buffer");

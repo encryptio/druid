@@ -30,6 +30,17 @@ static uint64_t luaL_checkuint64(lua_State *L, int index) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static int bind_bdev_get_name(lua_State *L) {
+    require_exactly(L, 1);
+
+    struct bdev_data *bdd = luaL_checkudata(L, 1, "druid bdev");
+    lua_pop(L, 1);
+
+    lua_pushstring(L, bdd->dev->name);
+
+    return 1;
+}
+
 static int bind_bdev_get_block_size(lua_State *L) {
     require_exactly(L, 1);
 
@@ -222,6 +233,7 @@ static int bind_bdev_wrap(lua_State *L, struct bdev *dev, int *refs, int ref_cou
 
         luaL_Reg fns[] = {
             { "__gc", bind_bdev_close },
+            { "name", bind_bdev_get_name },
             { "block_size", bind_bdev_get_block_size },
             { "block_count", bind_bdev_get_block_count },
             { "read_bytes", bind_bdev_read_bytes },
@@ -336,7 +348,7 @@ static int bind_file(lua_State *L) {
     }
 
     // try mmap first
-    struct bdev *dev = bio_create_mmap(block_size, fd, blocks, offset, true);
+    struct bdev *dev = bio_create_mmap(block_size, fd, blocks, offset, true, filename);
     if ( dev != NULL ) {
         // now try to mmap some more (anonymous) space - this makes sure we
         // actually have enough VM to continue operating reliably
@@ -360,7 +372,7 @@ static int bind_file(lua_State *L) {
     // file mmap or extra space test failed
 
     // baseio takes over responsibility for closing fd if it returns non-null
-    dev = bio_create_posixfd(block_size, fd, blocks, offset, true);
+    dev = bio_create_posixfd(block_size, fd, blocks, offset, true, filename);
 
     if ( dev == NULL )
         close(fd);

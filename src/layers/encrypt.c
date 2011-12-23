@@ -269,6 +269,8 @@ struct bdev *encrypt_open(struct bdev *base, const uint8_t *key, int keylen) {
 
     BF_ecb_encrypt(t+20, io->baseiv, &(io->bf), BF_DECRYPT);
 
+    snprintf(dev->name, BDEV_NAME_LEN, "encrypt");
+
     return dev;
 
 BAD_END:

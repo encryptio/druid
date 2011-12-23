@@ -4,11 +4,15 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#define BDEV_NAME_LEN 128
+
 struct bdev {
     void *m; // extra device-specific information
 
     uint64_t block_size;
     uint64_t block_count;
+
+    char name[BDEV_NAME_LEN];
 
     bool (*read_bytes  )(struct bdev *self, uint64_t start, uint64_t len, uint8_t *into);
     bool (*write_bytes )(struct bdev *self, uint64_t start, uint64_t len, const uint8_t *from);

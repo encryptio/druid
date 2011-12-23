@@ -96,6 +96,8 @@ struct bdev *slice_open(struct bdev *base, uint64_t start, uint64_t len) {
     dev->flush        = slice_flush;
     dev->sync         = slice_sync;
 
+    snprintf(dev->name, BDEV_NAME_LEN, "slice(offset=%llu, length=%llu)", (uint64_t)start*base->block_size, (uint64_t)len*base->block_size);
+
     return dev;
 };
 

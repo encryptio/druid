@@ -253,6 +253,8 @@ struct bdev *lazyzero_open(struct bdev *base) {
 
     io->cache = bcache_create(base, 16);
 
+    snprintf(dev->name, BDEV_NAME_LEN, "lazyzero");
+
     return dev;
 
 BAD_END:

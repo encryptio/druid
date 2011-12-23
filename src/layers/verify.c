@@ -224,6 +224,8 @@ struct bdev *verify_create(struct bdev *base) {
 
     create_zero_crc(dev);
 
+    snprintf(dev->name, BDEV_NAME_LEN, "verify");
+
     return dev;
 }
 

@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
             if ( ftruncate(fd, bs*blocks) )
                 err(1, "Couldn't ftruncate /tmp/druid-test-datastore");
 
-            dev = bio_create_mmap(bs, fd, blocks, 0, false);
+            dev = bio_create_mmap(bs, fd, blocks, 0, false, NULL);
 
             test(dev != NULL);
             if ( dev ) {
@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
             snprintf(suite_name, 128, "bio posixfd bs=%d ct=%d", (int)bs, (int)blocks);
             suite(suite_name);
 
-            dev = bio_create_posixfd(bs, fd, blocks, 0, false);
+            dev = bio_create_posixfd(bs, fd, blocks, 0, false, NULL);
 
             test(dev != NULL);
             if ( dev ) {

@@ -1,6 +1,7 @@
 #include "layers/xor.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <err.h>
@@ -271,6 +272,8 @@ struct bdev *xor_open(struct bdev **devices, int count) {
     dev->clear_caches = xor_clear_caches;
     dev->flush        = xor_flush;
     dev->sync         = xor_sync;
+
+    snprintf(dev->name, BDEV_NAME_LEN, "xor");
 
     return dev;
 }

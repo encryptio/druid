@@ -129,6 +129,8 @@ struct bdev *stripe_open(struct bdev **devices, int count) {
     dev->flush        = stripe_flush;
     dev->sync         = stripe_sync;
 
+    snprintf(dev->name, BDEV_NAME_LEN, "stripe");
+
     return dev;
 }
 
