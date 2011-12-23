@@ -18,6 +18,8 @@
 struct mem_io {
     uint8_t *base;
     size_t mmaplen;
+    bool inherit_fd;
+    int fd;
 };
 
 static bool mem_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
@@ -46,6 +48,11 @@ static void mem_mmap_close(struct bdev *self) {
     struct mem_io *io = self->m;
     if ( munmap(io->base, io->mmaplen) == -1 )
         err(1, "Couldn't munmap base in mem_mmap_close");
+
+    if ( io->inherit_fd )
+        if ( close(io->fd) )
+            logger(LOG_ERR, "baseio", "Couldn't close filehandle: %s", strerror(errno));
+
     free(io);
     free(self->generic_block_buffer);
     free(self);
@@ -101,6 +108,9 @@ struct bdev *bio_create_malloc(uint64_t block_size, size_t blocks) {
         goto ERROR;
     }
 
+    io->fd = -1;
+    io->inherit_fd = false;
+
     return dev;
 
 ERROR:
@@ -110,7 +120,7 @@ ERROR:
     return NULL;
 }
 
-struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset) {
+struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd) {
     assert(block_size);
 
     struct bdev *dev;
@@ -137,6 +147,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     dev->block_count = blocks;
 
     io->mmaplen = block_size * blocks;
+    io->inherit_fd = inherit_fd;
+    io->fd = fd;
 
     if ( (io->base = mmap(NULL, block_size * blocks, PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset)) == MAP_FAILED ) {
         logger(LOG_ERR, "baseio", "Couldn't mmap device memory (%llu blocks of %llu bytes each: %s",
@@ -159,6 +171,7 @@ ERROR:
 struct fd_io {
     int fd;
     off_t offset;
+    bool inherit_fd;
 };
 
 static bool fd_read_block(struct bdev *self, uint64_t which, uint8_t *into) {
@@ -198,6 +211,11 @@ static bool fd_write_block(struct bdev *self, uint64_t which, const uint8_t *fro
 }
 
 static void fd_close(struct bdev *self) {
+    struct fd_io *io = self->m;
+    if ( io->inherit_fd )
+        if ( close(io->fd) )
+            logger(LOG_ERR, "baseio", "Couldn't close filehandle: %s", strerror(errno));
+
     free(self->m);
     free(self->generic_block_buffer);
     free(self);
@@ -210,7 +228,7 @@ static void fd_sync(struct bdev *self) {
                 io->fd, strerror(errno));
 }
 
-struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset) {
+struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_t offset, bool inherit_fd) {
     assert(block_size);
 
     struct bdev *dev;
@@ -238,6 +256,7 @@ struct bdev *bio_create_posixfd(uint64_t block_size, int fd, size_t blocks, off_
 
     io->fd = fd;
     io->offset = offset;
+    io->inherit_fd = inherit_fd;
 
     return dev;
 }
