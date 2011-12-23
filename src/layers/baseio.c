@@ -223,7 +223,7 @@ static void fd_close(struct bdev *self) {
 
 static void fd_sync(struct bdev *self) {
     struct fd_io *io = self->m;
-    if ( !fsync(io->fd) )
+    if ( fsync(io->fd) < 0 )
         logger(LOG_ERR, "baseio", "Couldn't fsync (fd=%d): %s\n",
                 io->fd, strerror(errno));
 }
