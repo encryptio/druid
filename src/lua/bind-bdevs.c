@@ -343,11 +343,19 @@ static int bind_file(lua_State *L) {
         logger(LOG_JUNK, "bind", "Assuming block size of %d for %s", (int)block_size, filename);
     }
 
+    off_t size = lseek(fd, 0, SEEK_END);
+    if ( size == -1 ) {
+        logger(LOG_ERR, "bind", "File \"%s\" isn't seekable", filename);
+        close(fd);
+        
+        lua_pushnil(L);
+        return 1;
+    }
+    lseek(fd, 0, SEEK_SET);
 
     if ( blocks_set ) {
         // make sure there are at least that number of blocks in the file
 
-        off_t size = st.st_size;
         uint64_t wanted = block_size * blocks + offset;
 
         if ( size < wanted )
@@ -360,7 +368,7 @@ static int bind_file(lua_State *L) {
 
         // TODO: should it be an error to open a file with a block size
         //       that doesn't evenly divide the file size?
-        blocks = (st.st_size + block_size - 1) / block_size;
+        blocks = (size + block_size - 1) / block_size;
     }
 
     // try mmap first
