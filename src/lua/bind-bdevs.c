@@ -276,27 +276,37 @@ static int bind_bio_create_malloc(lua_State *L) {
 }
 
 static int bind_file(lua_State *L) {
-    require_atleast(L, 2);
+    require_atleast(L, 1);
 
     const char *filename = luaL_checkstring(L, 1);
-    uint64_t block_size  = luaL_checkuint64(L, 2);
+
+    bool block_size_set = false;
+    uint64_t block_size = 0;
 
     bool blocks_set = false;
     uint64_t blocks = 0, offset = 0;
 
-    if ( lua_gettop(L) >= 3 ) {
-        blocks_set = true;
-        blocks = luaL_checkuint64(L, 3);
-        if ( lua_gettop(L) >= 4 )
-            offset = luaL_checkuint64(L, 4);
+    if ( lua_gettop(L) >= 2 ) {
+        block_size_set = true;
+        block_size = luaL_checkuint64(L, 2);
+
+        if ( lua_gettop(L) >= 3 ) {
+            blocks_set = true;
+            blocks = luaL_checkuint64(L, 3);
+
+            if ( lua_gettop(L) >= 4 )
+                offset = luaL_checkuint64(L, 4);
+        }
     }
 
     lua_pop(L, lua_gettop(L)-1);
 
     // stack: filename
     
-    luaL_argcheck(L, (block_size >= 1),         1, "Unreasonable block size");
-    luaL_argcheck(L, (block_size <= (1 << 20)), 1, "Unreasonable block size");
+    if ( block_size_set ) {
+        luaL_argcheck(L, (block_size >= 1),         1, "Unreasonable block size");
+        luaL_argcheck(L, (block_size <= (1 << 20)), 1, "Unreasonable block size");
+    }
     if ( blocks_set )
         luaL_argcheck(L, (blocks     >= 1),     2, "Zero block count");
 
@@ -325,8 +335,14 @@ static int bind_file(lua_State *L) {
         return 1;
     }
 
-    if ( block_size % st.st_blksize )
-        logger(LOG_INFO, "bind", "File \"%s\"'s optimal IO size is %d bytes, but the block size requested is %d bytes.", filename, (int)st.st_blksize, (int)block_size);
+    if ( block_size_set ) {
+        if ( block_size % st.st_blksize )
+            logger(LOG_INFO, "bind", "File \"%s\"'s optimal IO size is %d bytes, but the block size requested is %d bytes.", filename, (int)st.st_blksize, (int)block_size);
+    } else {
+        block_size = st.st_blksize;
+        logger(LOG_JUNK, "bind", "Assuming block size of %d for %s", (int)block_size, filename);
+    }
+
 
     if ( blocks_set ) {
         // make sure there are at least that number of blocks in the file
