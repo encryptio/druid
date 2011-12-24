@@ -158,7 +158,7 @@ bool lazyzero_create(struct bdev *base) {
     uint64_t bitmap_bits = ((base->block_count-1) + chunk_size - 1) / chunk_size;
     uint64_t bitmap_blocks = (bitmap_bits + bits_per_block - 1) / bits_per_block;
 
-    assert(bitmap_blocks * bits_per_block >= base->block_count-1-bitmap_blocks);
+    assert(bitmap_blocks * bits_per_block >= (base->block_count-1-bitmap_blocks + chunk_size-1) / chunk_size);
 
     uint8_t *header;
     if ( (header = malloc(base->block_size)) == NULL )
@@ -231,7 +231,7 @@ struct bdev *lazyzero_open(struct bdev *base) {
         goto BAD_END;
     }
 
-    if ( io->bitmap_blocks * io->bits_per_block < base->block_count-1-io->bitmap_blocks ) {
+    if ( io->bitmap_blocks * io->bits_per_block < (base->block_count-1-io->bitmap_blocks + io->chunk_size-1) / io->chunk_size ) {
         logger(LOG_ERR, "lazyzero", "Not enough bitmap blocks for this device size");
         goto BAD_END;
     }
