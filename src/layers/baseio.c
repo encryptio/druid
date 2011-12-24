@@ -155,8 +155,8 @@ struct bdev *bio_create_mmap(uint64_t block_size, int fd, size_t blocks, off_t o
     io->fd = fd;
 
     if ( (io->base = mmap(NULL, block_size * blocks, PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset)) == MAP_FAILED ) {
-        logger(LOG_ERR, "baseio", "Couldn't mmap device memory (%llu blocks of %llu bytes each: %s",
-                (unsigned long long) block_size, (unsigned long long) blocks, strerror(errno));
+        logger(LOG_ERR, "baseio", "Couldn't mmap device memory (%llu blocks of %llu bytes each): %s",
+                (unsigned long long) blocks, (unsigned long long) block_size, strerror(errno));
         goto ERROR;
     }
 
