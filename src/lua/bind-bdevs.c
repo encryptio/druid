@@ -341,6 +341,8 @@ static int bind_file(lua_State *L) {
     } else {
         block_size = st.st_blksize;
         logger(LOG_JUNK, "bind", "Assuming block size of %d for %s", (int)block_size, filename);
+
+        assert(block_size > 0);
     }
 
     off_t size = lseek(fd, 0, SEEK_END);
