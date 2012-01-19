@@ -373,8 +373,11 @@ static int bind_file(lua_State *L) {
         blocks = (size + block_size - 1) / block_size;
     }
 
+    struct bdev *dev;
+// XXX: mmap does not report read/write errors, it kills the process. fix that.
+#if 0
     // try mmap first
-    struct bdev *dev = bio_create_mmap(block_size, fd, blocks, offset, true, filename);
+    dev = bio_create_mmap(block_size, fd, blocks, offset, true, filename);
     if ( dev != NULL ) {
         // now try to mmap some more (anonymous) space - this makes sure we
         // actually have enough VM to continue operating reliably
@@ -395,6 +398,7 @@ static int bind_file(lua_State *L) {
             return bind_bdev_wrap(L, dev, NULL, 0);
         }
     }
+#endif
     // file mmap or extra space test failed
 
     // baseio takes over responsibility for closing fd if it returns non-null
